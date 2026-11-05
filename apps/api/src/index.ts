@@ -13,7 +13,7 @@ import budgetRoutes from './modules/budgets/budget.routes';
 import insightRoutes from './modules/insights/insight.routes';
 
 const app = express();
-const port = process.env.PORT || 5000;
+const port = Number(process.env.PORT) || 5000;
 
 app.use(cors({
   origin: '*',
@@ -71,6 +71,6 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
   });
 });
 
-app.listen(port, () => {
-  console.log(`🚀 Montra API Server is running on http://localhost:${port}`);
+app.listen(port, '0.0.0.0', () => {
+  console.log(`🚀 Montra API Server is running on port ${port}`);
 });
