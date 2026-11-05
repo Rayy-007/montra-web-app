@@ -1,0 +1,136 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
+}
+
+enum AccountType {
+  CASH
+  MOBILE_WALLET
+  BANK
+  SAVINGS
+}
+
+enum CategoryType {
+  EXPENSE
+  INCOME
+}
+
+enum TransactionType {
+  EXPENSE
+  INCOME
+  TRANSFER
+}
+
+enum IncomeStatus {
+  EXPECTED
+  RECEIVED
+  PARTIAL
+}
+
+model User {
+  id           String        @id @default(uuid())
+  email        String        @unique
+  name         String
+  passwordHash String
+  currency     String        @default("MMK")
+  accounts     Account[]
+  categories   Category[]
+  transactions Transaction[]
+  budgets      Budget[]
+  incomePlans  IncomePlan[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+}
+
+model Account {
+  id           String        @id @default(uuid())
+  userId       String
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name         String        // "Cash", "Kpay", "AYA Bank"
+  type         AccountType   @default(CASH)
+  balance      Decimal       @default(0)
+  budgetLimit  Decimal?      // Optional monthly spending cap
+  transactions Transaction[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+}
+
+model Category {
+  id           String        @id @default(uuid())
+  userId       String
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name         String        // "Parent", "Fuel", "Night Snacks", etc.
+  type         CategoryType  @default(EXPENSE)
+  icon         String?       // Lucide icon identifier
+  color        String?       // Hex color or badge theme
+  transactions Transaction[]
+  budgetItems  BudgetItem[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+}
+
+model Transaction {
+  id           String          @id @default(uuid())
+  userId       String
+  user         User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accountId    String
+  account      Account         @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  categoryId   String?
+  category     Category?       @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  type         TransactionType @default(EXPENSE)
+  amount       Decimal
+  date         DateTime        @default(now())
+  description  String?
+  incomePlanId String?         // Linked if derived from an expected income plan
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+}
+
+model Budget {
+  id          String       @id @default(uuid())
+  userId      String
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  month       Int          // 1 - 12
+  year        Int          // e.g. 2026
+  totalBudget Decimal      @default(0)
+  items       BudgetItem[]
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@unique([userId, month, year])
+}
+
+model BudgetItem {
+  id            String   @id @default(uuid())
+  budgetId      String
+  budget        Budget   @relation(fields: [budgetId], references: [id], onDelete: Cascade)
+  categoryId    String
+  category      Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  plannedAmount Decimal  @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([budgetId, categoryId])
+}
+
+model IncomePlan {
+  id             String       @id @default(uuid())
+  userId         String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  source         String       // "Salary", "Learnex Course", "Investment Return"
+  expectedAmount Decimal      @default(0)
+  actualAmount   Decimal      @default(0)
+  expectedDate   DateTime?
+  actualDate     DateTime?
+  month          Int          // 1 - 12
+  year           Int          // e.g. 2026
+  status         IncomeStatus @default(EXPECTED)
+  description    String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+}

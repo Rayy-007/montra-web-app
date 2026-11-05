@@ -1,0 +1,41 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Next.js
+.next/
+out/
+.vercel/
+
+# Build artifacts & caches
+dist/
+build/
+*.tsbuildinfo
+.turbo/
+
+# Environment variables
+.env
+.env*.local
+*.env
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.log
+
+# OS & Shell files
+.DS_Store
+Thumbs.db
+powershell.cmd
+
+# Archives & Temporary Data
+*.zip
+*.csv
+scratch/
+
+# AI & Planning documentation
+PLAN.md
+implementation_plan.md
+walkthrough.md
