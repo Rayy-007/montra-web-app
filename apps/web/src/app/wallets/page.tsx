@@ -220,15 +220,15 @@ export default function WalletsPage() {
       {/* Title Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center space-x-2 text-teal-600 text-xs font-semibold uppercase tracking-wider">
+          <div className="flex items-center space-x-2 text-teal-600 dark:text-teal-400 text-xs font-semibold uppercase tracking-wider">
             <Wallet className="w-4 h-4" />
             <span>Multi-Account Management</span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
             Wallets & Accounts
           </h1>
-          <p className="text-xs sm:text-sm text-slate-500">
-            Viewing data for <span className="font-semibold text-teal-600">{monthLabel} {year}</span> — Keep separate ledgers for cash, digital wallets, bank accounts, and savings.
+          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
+            Viewing data for <span className="font-semibold text-teal-600 dark:text-teal-400">{monthLabel} {year}</span> — Keep separate ledgers for cash, digital wallets, bank accounts, and savings.
           </p>
         </div>
 
@@ -237,9 +237,9 @@ export default function WalletsPage() {
             onClick={() => setIsResetModalOpen(true)}
             disabled={isResettingAll || displayAccounts.length === 0}
             title={`Reset wallet balances to 0 MMK for ${monthLabel} ${year}`}
-            className="py-2.5 px-3.5 bg-white border border-slate-200/90 hover:bg-slate-50 text-slate-700 font-semibold rounded-xl text-sm shadow-sm transition-all flex items-center space-x-2 disabled:opacity-50"
+            className="py-2.5 px-3.5 bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold rounded-xl text-sm shadow-sm transition-all flex items-center space-x-2 disabled:opacity-50"
           >
-            <RotateCcw className={`w-4 h-4 ${isResettingAll ? 'animate-spin text-teal-600' : 'text-slate-500'}`} />
+            <RotateCcw className={`w-4 h-4 ${isResettingAll ? 'animate-spin text-teal-600' : 'text-slate-500 dark:text-slate-400'}`} />
             <span>Reset for New Month</span>
           </button>
           <button
@@ -254,26 +254,26 @@ export default function WalletsPage() {
 
       {/* Monthly Summary Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-sm">
-          <div className="flex items-center space-x-2 text-slate-500 text-xs font-medium uppercase tracking-wider mb-1">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 border border-slate-200/80 dark:border-slate-800 shadow-sm">
+          <div className="flex items-center space-x-2 text-slate-500 dark:text-slate-400 text-xs font-medium uppercase tracking-wider mb-1">
             <Wallet className="w-3.5 h-3.5" />
             <span>Total Balance</span>
           </div>
-          <div className="text-xl font-black text-slate-900">{formatMMK(totalBalance)}</div>
+          <div className="text-xl font-black text-slate-900 dark:text-slate-100">{formatMMK(totalBalance)}</div>
         </div>
-        <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-sm">
-          <div className="flex items-center space-x-2 text-emerald-600 text-xs font-medium uppercase tracking-wider mb-1">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 border border-slate-200/80 dark:border-slate-800 shadow-sm">
+          <div className="flex items-center space-x-2 text-emerald-600 dark:text-emerald-400 text-xs font-medium uppercase tracking-wider mb-1">
             <TrendingUp className="w-3.5 h-3.5" />
             <span>{monthLabel} Income</span>
           </div>
-          <div className="text-xl font-black text-emerald-600">{formatMMK(totalMonthlyIncome)}</div>
+          <div className="text-xl font-black text-emerald-600 dark:text-emerald-400">{formatMMK(totalMonthlyIncome)}</div>
         </div>
-        <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-sm">
-          <div className="flex items-center space-x-2 text-rose-500 text-xs font-medium uppercase tracking-wider mb-1">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 border border-slate-200/80 dark:border-slate-800 shadow-sm">
+          <div className="flex items-center space-x-2 text-rose-500 dark:text-rose-400 text-xs font-medium uppercase tracking-wider mb-1">
             <TrendingDown className="w-3.5 h-3.5" />
             <span>{monthLabel} Expense</span>
           </div>
-          <div className="text-xl font-black text-rose-500">{formatMMK(totalMonthlyExpense)}</div>
+          <div className="text-xl font-black text-rose-500 dark:text-rose-400">{formatMMK(totalMonthlyExpense)}</div>
         </div>
       </div>
 
@@ -294,7 +294,7 @@ export default function WalletsPage() {
           return (
             <div
               key={acc.id}
-              className="bg-white rounded-3xl border border-slate-200/80 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden"
+              className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden"
             >
               {/* Colored Header Strip */}
               <div className={`bg-gradient-to-r ${gradient} px-6 py-4 flex items-center justify-between`}>
@@ -333,36 +333,36 @@ export default function WalletsPage() {
                 {/* Overall Balance (Single Clean Display - Edit function is in the header) */}
                 <div>
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-slate-500 font-medium uppercase tracking-wider">Overall Balance</span>
+                    <span className="text-xs text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wider">Overall Balance</span>
                     {acc.startingBalance !== undefined && acc.startingBalance > 0 && acc.monthlyExpense > 0 && (
-                      <span className="text-[11px] font-medium text-slate-400">
+                      <span className="text-[11px] font-medium text-slate-400 dark:text-slate-500">
                         Initial: {formatMMK(acc.startingBalance)}
                       </span>
                     )}
                   </div>
-                  <div className="text-2xl font-black text-slate-900 mt-0.5">
+                  <div className="text-2xl font-black text-slate-900 dark:text-slate-100 mt-0.5">
                     {formatMMK(acc.balance)}
                   </div>
                 </div>
 
                 {/* Monthly Breakdown */}
-                <div className="bg-slate-50 rounded-xl p-3 space-y-2">
-                  <div className="text-xs font-semibold text-slate-600 uppercase tracking-wider flex items-center space-x-1.5">
+                <div className="bg-slate-50 dark:bg-slate-800/70 border border-slate-100 dark:border-slate-800 rounded-xl p-3 space-y-2">
+                  <div className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider flex items-center space-x-1.5">
                     <ArrowUpDown className="w-3 h-3" />
                     <span>{monthLabel} {year} Activity</span>
                   </div>
                   <div className="grid grid-cols-3 gap-2">
                     <div>
                       <div className="text-[10px] text-slate-400 uppercase font-medium">Income</div>
-                      <div className="text-sm font-bold text-emerald-600">{formatMMK(acc.monthlyIncome)}</div>
+                      <div className="text-sm font-bold text-emerald-600 dark:text-emerald-400">{formatMMK(acc.monthlyIncome)}</div>
                     </div>
                     <div>
                       <div className="text-[10px] text-slate-400 uppercase font-medium">Expense</div>
-                      <div className="text-sm font-bold text-rose-500">{formatMMK(acc.monthlyExpense)}</div>
+                      <div className="text-sm font-bold text-rose-500 dark:text-rose-400">{formatMMK(acc.monthlyExpense)}</div>
                     </div>
                     <div>
                       <div className="text-[10px] text-slate-400 uppercase font-medium">Net</div>
-                      <div className={`text-sm font-bold ${acc.monthlyNet >= 0 ? 'text-emerald-600' : 'text-rose-500'}`}>
+                      <div className={`text-sm font-bold ${acc.monthlyNet >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-500 dark:text-rose-400'}`}>
                         {acc.monthlyNet >= 0 ? '+' : ''}{formatMMK(acc.monthlyNet)}
                       </div>
                     </div>
@@ -373,12 +373,12 @@ export default function WalletsPage() {
                 {acc.budgetLimit != null && acc.budgetLimit > 0 && budgetUsage !== null && (
                   <div className="space-y-1.5">
                     <div className="flex items-center justify-between text-xs">
-                      <span className="text-slate-500 font-medium">Monthly Budget Usage</span>
-                      <span className="font-bold text-slate-700">
+                      <span className="text-slate-500 dark:text-slate-400 font-medium">Monthly Budget Usage</span>
+                      <span className="font-bold text-slate-700 dark:text-slate-300">
                         {formatMMK(acc.monthlyExpense)} / {formatMMK(acc.budgetLimit)}
                       </span>
                     </div>
-                    <div className="w-full bg-slate-200 rounded-full h-2 overflow-hidden">
+                    <div className="w-full bg-slate-200 dark:bg-slate-800 rounded-full h-2 overflow-hidden">
                       <div
                         className={`h-2 rounded-full transition-all duration-500 ${
                           budgetUsage > 90 ? 'bg-rose-500' : budgetUsage > 70 ? 'bg-amber-500' : 'bg-teal-500'
@@ -400,7 +400,7 @@ export default function WalletsPage() {
 
       {/* Empty State */}
       {!financeLoading && displayAccounts.length === 0 && (
-        <div className="text-center py-16 text-slate-400">
+        <div className="text-center py-16 text-slate-400 dark:text-slate-500">
           <Wallet className="w-12 h-12 mx-auto mb-3 opacity-30" />
           <p className="text-sm font-medium">No accounts yet. Add your first wallet to get started.</p>
         </div>
@@ -416,13 +416,13 @@ export default function WalletsPage() {
           }}
         >
           <div
-            className="bg-white rounded-2xl shadow-2xl border border-slate-100 w-full max-w-md max-h-[92vh] overflow-y-auto animate-modal-slide"
+            className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-100 dark:border-slate-800 w-full max-w-md max-h-[92vh] overflow-y-auto animate-modal-slide"
           >
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-teal-50/50">
-              <h3 className="text-base font-bold text-slate-900">Add Account / Wallet</h3>
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800 bg-teal-50/50 dark:bg-teal-950/30">
+              <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">Add Account / Wallet</h3>
               <button
                 onClick={() => setIsAddModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg transition-colors"
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 rounded-lg transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -430,7 +430,7 @@ export default function WalletsPage() {
 
             <form onSubmit={handleCreateWallet} className="p-6 space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
                   Wallet / Account Name
                 </label>
                 <input
@@ -439,28 +439,28 @@ export default function WalletsPage() {
                   value={walletName}
                   onChange={(e) => setWalletName(e.target.value)}
                   required
-                  className="w-full text-sm font-medium px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                  className="w-full text-sm font-medium px-3 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:ring-2 focus:ring-teal-500 focus:outline-none"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
                   Account Type
                 </label>
                 <select
                   value={walletType}
                   onChange={(e) => setWalletType(e.target.value as any)}
-                  className="w-full text-sm font-medium px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                  className="w-full text-sm font-medium px-3 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-teal-500 focus:outline-none"
                 >
-                  <option value="CASH">Cash in Hand</option>
-                  <option value="MOBILE_WALLET">Mobile Wallet (Kpay, Wave)</option>
-                  <option value="BANK">Bank Checking Account</option>
-                  <option value="SAVINGS">Savings Account</option>
+                  <option value="CASH" className="dark:bg-slate-900">Cash in Hand</option>
+                  <option value="MOBILE_WALLET" className="dark:bg-slate-900">Mobile Wallet (Kpay, Wave)</option>
+                  <option value="BANK" className="dark:bg-slate-900">Bank Checking Account</option>
+                  <option value="SAVINGS" className="dark:bg-slate-900">Savings Account</option>
                 </select>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
                   Initial Balance (MMK)
                 </label>
                 <input
@@ -468,12 +468,12 @@ export default function WalletsPage() {
                   placeholder="0"
                   value={initialBalance}
                   onChange={(e) => setInitialBalance(e.target.value)}
-                  className="w-full text-lg font-bold text-slate-900 px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                  className="w-full text-lg font-bold text-slate-900 dark:text-slate-100 px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-teal-500 focus:outline-none"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
                   Monthly Budget Allocation / Limit (Optional)
                 </label>
                 <input
@@ -481,7 +481,7 @@ export default function WalletsPage() {
                   placeholder="e.g. 350000"
                   value={budgetLimit}
                   onChange={(e) => setBudgetLimit(e.target.value)}
-                  className="w-full text-sm px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                  className="w-full text-sm px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:ring-2 focus:ring-teal-500 focus:outline-none"
                 />
               </div>
 
@@ -489,7 +489,7 @@ export default function WalletsPage() {
                 <button
                   type="button"
                   onClick={() => setIsAddModalOpen(false)}
-                  className="flex-1 py-2.5 px-4 text-sm font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors"
+                  className="flex-1 py-2.5 px-4 text-sm font-semibold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl transition-colors"
                 >
                   Cancel
                 </button>
@@ -516,22 +516,22 @@ export default function WalletsPage() {
             if (e.target === e.currentTarget) setEditingAccount(null);
           }}
         >
-          <div className="bg-white rounded-2xl shadow-2xl border border-slate-100 w-full max-w-md max-h-[92vh] overflow-y-auto animate-modal-slide">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-teal-50/50">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-100 dark:border-slate-800 w-full max-w-md max-h-[92vh] overflow-y-auto animate-modal-slide">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800 bg-teal-50/50 dark:bg-teal-950/30">
               <div className="flex items-center space-x-2.5">
-                <div className="w-8 h-8 rounded-xl bg-teal-100 flex items-center justify-center text-teal-600">
+                <div className="w-8 h-8 rounded-xl bg-teal-100 dark:bg-teal-900/60 flex items-center justify-center text-teal-600 dark:text-teal-400">
                   <Edit2 className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-slate-900">Edit Wallet Card</h3>
-                  <p className="text-xs text-slate-500">
-                    Update amount for <span className="font-semibold text-teal-600">{monthLabel} {year}</span>, name, or cap
+                  <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">Edit Wallet Card</h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    Update amount for <span className="font-semibold text-teal-600 dark:text-teal-400">{monthLabel} {year}</span>, name, or cap
                   </p>
                 </div>
               </div>
               <button
                 onClick={() => setEditingAccount(null)}
-                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg transition-colors"
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 rounded-lg transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -539,7 +539,7 @@ export default function WalletsPage() {
 
             <form onSubmit={handleSaveEdit} className="p-6 space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
                   Wallet / Account Name
                 </label>
                 <input
@@ -547,36 +547,36 @@ export default function WalletsPage() {
                   value={editName}
                   onChange={(e) => setEditName(e.target.value)}
                   required
-                  className="w-full text-sm font-medium px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                  className="w-full text-sm font-medium px-3 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-teal-500 focus:outline-none"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
                   Account Type
                 </label>
                 <select
                   value={editType}
                   onChange={(e) => setEditType(e.target.value as any)}
-                  className="w-full text-sm font-medium px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                  className="w-full text-sm font-medium px-3 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-teal-500 focus:outline-none"
                 >
-                  <option value="CASH">Cash in Hand</option>
-                  <option value="MOBILE_WALLET">Mobile Wallet (Kpay, Wave)</option>
-                  <option value="BANK">Bank Checking Account</option>
-                  <option value="SAVINGS">Savings Account</option>
+                  <option value="CASH" className="dark:bg-slate-900">Cash in Hand</option>
+                  <option value="MOBILE_WALLET" className="dark:bg-slate-900">Mobile Wallet (Kpay, Wave)</option>
+                  <option value="BANK" className="dark:bg-slate-900">Bank Checking Account</option>
+                  <option value="SAVINGS" className="dark:bg-slate-900">Savings Account</option>
                 </select>
               </div>
 
               {/* Wallet Amount / Balance with Quick Reset */}
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <label className="text-xs font-semibold text-slate-700 uppercase tracking-wider">
+                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
                     {monthLabel} {year} Starting Balance (MMK)
                   </label>
                   <button
                     type="button"
                     onClick={() => setEditBalance('0')}
-                    className="text-[11px] font-bold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 px-2 py-0.5 rounded-md transition-colors"
+                    className="text-[11px] font-bold text-rose-600 dark:text-rose-400 hover:text-rose-700 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/40 px-2 py-0.5 rounded-md transition-colors"
                   >
                     Reset to 0
                   </button>
@@ -587,17 +587,17 @@ export default function WalletsPage() {
                   value={editBalance}
                   onChange={(e) => setEditBalance(e.target.value)}
                   required
-                  className="w-full text-2xl font-black text-slate-900 px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                  className="w-full text-2xl font-black text-slate-900 dark:text-slate-100 px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-teal-500 focus:outline-none"
                 />
                 {editBalance !== '' && !isNaN(Number(editBalance)) && (
-                  <p className="text-xs font-semibold text-teal-600 mt-1 pl-0.5">
+                  <p className="text-xs font-semibold text-teal-600 dark:text-teal-400 mt-1 pl-0.5">
                     {formatMMK(Number(editBalance))}
                   </p>
                 )}
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
                   Monthly Budget Allocation / Limit (Optional)
                 </label>
                 <input
@@ -605,10 +605,10 @@ export default function WalletsPage() {
                   placeholder="e.g. 350000"
                   value={editBudgetLimit}
                   onChange={(e) => setEditBudgetLimit(e.target.value)}
-                  className="w-full text-sm px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                  className="w-full text-sm px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:ring-2 focus:ring-teal-500 focus:outline-none"
                 />
                 {editBudgetLimit !== '' && Number(editBudgetLimit) > 0 && (
-                  <p className="text-xs font-semibold text-slate-500 mt-1 pl-0.5">
+                  <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 mt-1 pl-0.5">
                     Limit: {formatMMK(Number(editBudgetLimit))}
                   </p>
                 )}
@@ -618,7 +618,7 @@ export default function WalletsPage() {
                 <button
                   type="button"
                   onClick={() => setEditingAccount(null)}
-                  className="flex-1 py-2.5 px-4 text-sm font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors"
+                  className="flex-1 py-2.5 px-4 text-sm font-semibold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl transition-colors"
                 >
                   Cancel
                 </button>
@@ -650,28 +650,28 @@ export default function WalletsPage() {
             if (e.target === e.currentTarget && !isDeleting) setDeletingAccount(null);
           }}
         >
-          <div className="bg-white rounded-2xl shadow-2xl border border-slate-100 w-full max-w-md max-h-[92vh] overflow-y-auto animate-modal-slide">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-100 dark:border-slate-800 w-full max-w-md max-h-[92vh] overflow-y-auto animate-modal-slide">
             <div className="p-6">
-              <div className="w-12 h-12 rounded-2xl bg-rose-50 border border-rose-100 flex items-center justify-center text-rose-500 mb-4 mx-auto">
+              <div className="w-12 h-12 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-100 dark:border-rose-900/50 flex items-center justify-center text-rose-500 dark:text-rose-400 mb-4 mx-auto">
                 <Trash2 className="w-6 h-6" />
               </div>
 
               <div className="text-center mb-6">
-                <h3 className="text-lg font-bold text-slate-900 mb-1">Delete Wallet Account</h3>
-                <p className="text-sm text-slate-600">
-                  Are you sure you want to delete <span className="font-semibold text-slate-900">"{deletingAccount.name}"</span>?
+                <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100 mb-1">Delete Wallet Account</h3>
+                <p className="text-sm text-slate-600 dark:text-slate-400">
+                  Are you sure you want to delete <span className="font-semibold text-slate-900 dark:text-slate-100">"{deletingAccount.name}"</span>?
                 </p>
-                <div className="mt-3 text-xs text-rose-600 bg-rose-50/80 border border-rose-100 rounded-xl p-3 text-left space-y-1">
-                  <div className="font-bold flex items-center space-x-1.5 text-rose-700">
+                <div className="mt-3 text-xs text-rose-600 dark:text-rose-400 bg-rose-50/80 dark:bg-rose-950/30 border border-rose-100 dark:border-rose-900/50 rounded-xl p-3 text-left space-y-1">
+                  <div className="font-bold flex items-center space-x-1.5 text-rose-700 dark:text-rose-300">
                     <AlertTriangle className="w-4 h-4 flex-shrink-0" />
                     <span>Permanent Action</span>
                   </div>
-                  <p className="text-rose-600 leading-relaxed pl-5">
+                  <p className="text-rose-600 dark:text-rose-400 leading-relaxed pl-5">
                     All transactions and monthly records linked to this wallet will be permanently removed.
                   </p>
                 </div>
                 {deleteError && (
-                  <p className="text-xs text-rose-600 font-semibold mt-2.5 bg-rose-50 p-2 rounded-lg">
+                  <p className="text-xs text-rose-600 dark:text-rose-400 font-semibold mt-2.5 bg-rose-50 dark:bg-rose-950/40 p-2 rounded-lg">
                     {deleteError}
                   </p>
                 )}
@@ -682,7 +682,7 @@ export default function WalletsPage() {
                   type="button"
                   disabled={isDeleting}
                   onClick={() => setDeletingAccount(null)}
-                  className="flex-1 py-2.5 px-4 text-sm font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors disabled:opacity-50"
+                  className="flex-1 py-2.5 px-4 text-sm font-semibold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl transition-colors disabled:opacity-50"
                 >
                   Cancel
                 </button>
@@ -717,18 +717,18 @@ export default function WalletsPage() {
             if (e.target === e.currentTarget && !isResettingAll) setIsResetModalOpen(false);
           }}
         >
-          <div className="bg-white rounded-2xl shadow-2xl border border-slate-100 w-full max-w-md max-h-[92vh] overflow-y-auto animate-modal-slide">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-100 dark:border-slate-800 w-full max-w-md max-h-[92vh] overflow-y-auto animate-modal-slide">
             <div className="p-6">
-              <div className="w-12 h-12 rounded-2xl bg-amber-50 border border-amber-100 flex items-center justify-center text-amber-500 mb-4 mx-auto">
+              <div className="w-12 h-12 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-100 dark:border-amber-900/50 flex items-center justify-center text-amber-500 dark:text-amber-400 mb-4 mx-auto">
                 <RotateCcw className="w-6 h-6" />
               </div>
 
               <div className="text-center mb-6">
-                <h3 className="text-lg font-bold text-slate-900 mb-1">Reset Monthly Balances</h3>
-                <p className="text-sm text-slate-600">
-                  Reset all wallet balances to <span className="font-semibold text-slate-900">0 MMK</span> for <span className="font-bold text-teal-600">{monthLabel} {year}</span>?
+                <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100 mb-1">Reset Monthly Balances</h3>
+                <p className="text-sm text-slate-600 dark:text-slate-400">
+                  Reset all wallet balances to <span className="font-semibold text-slate-900 dark:text-slate-100">0 MMK</span> for <span className="font-bold text-teal-600 dark:text-teal-400">{monthLabel} {year}</span>?
                 </p>
-                <p className="text-xs text-slate-500 mt-2 bg-slate-50 border border-slate-200/80 rounded-xl p-2.5 text-left">
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 bg-slate-50 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-800 rounded-xl p-2.5 text-left">
                   💡 This resets only the currently selected month ({monthLabel} {year}). Your previous months' balances and history remain safely preserved.
                 </p>
               </div>
@@ -738,7 +738,7 @@ export default function WalletsPage() {
                   type="button"
                   disabled={isResettingAll}
                   onClick={() => setIsResetModalOpen(false)}
-                  className="flex-1 py-2.5 px-4 text-sm font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors disabled:opacity-50"
+                  className="flex-1 py-2.5 px-4 text-sm font-semibold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl transition-colors disabled:opacity-50"
                 >
                   Cancel
                 </button>

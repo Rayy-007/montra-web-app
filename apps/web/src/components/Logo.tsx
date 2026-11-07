@@ -105,7 +105,7 @@ export const Logo: React.FC<LogoProps> = ({
       {logoIcon}
       {withText && (
         <span
-          className={`font-black tracking-tight bg-gradient-to-r from-emerald-700 via-teal-600 to-teal-500 bg-clip-text text-transparent ${
+          className={`font-black tracking-tight bg-gradient-to-r from-emerald-700 via-teal-600 to-teal-500 dark:from-emerald-400 dark:via-teal-300 dark:to-cyan-300 bg-clip-text text-transparent ${
             textClassName || 'text-xl'
           }`}
         >

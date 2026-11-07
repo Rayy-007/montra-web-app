@@ -33,33 +33,33 @@ export const ProgressLoading: React.FC<ProgressLoadingProps> = ({
   const themeStyles = {
     emerald: {
       bar: 'from-emerald-500 to-teal-400',
-      badge: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-      icon: 'text-emerald-600',
-      track: 'bg-emerald-100/60',
+      badge: 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800',
+      icon: 'text-emerald-600 dark:text-emerald-400',
+      track: 'bg-emerald-100/60 dark:bg-emerald-950/40',
     },
     indigo: {
       bar: 'from-indigo-500 to-purple-400',
-      badge: 'bg-indigo-50 text-indigo-700 border-indigo-200',
-      icon: 'text-indigo-600',
-      track: 'bg-indigo-100/60',
+      badge: 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800',
+      icon: 'text-indigo-600 dark:text-indigo-400',
+      track: 'bg-indigo-100/60 dark:bg-indigo-950/40',
     },
     rose: {
       bar: 'from-rose-500 to-pink-400',
-      badge: 'bg-rose-50 text-rose-700 border-rose-200',
-      icon: 'text-rose-600',
-      track: 'bg-rose-100/60',
+      badge: 'bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-400 border-rose-200 dark:border-rose-800',
+      icon: 'text-rose-600 dark:text-rose-400',
+      track: 'bg-rose-100/60 dark:bg-rose-950/40',
     },
     amber: {
       bar: 'from-amber-500 to-orange-400',
-      badge: 'bg-amber-50 text-amber-700 border-amber-200',
-      icon: 'text-amber-600',
-      track: 'bg-amber-100/60',
+      badge: 'bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800',
+      icon: 'text-amber-600 dark:text-amber-400',
+      track: 'bg-amber-100/60 dark:bg-amber-950/40',
     },
     teal: {
       bar: 'from-teal-500 to-emerald-400',
-      badge: 'bg-teal-50 text-teal-700 border-teal-200',
-      icon: 'text-teal-600',
-      track: 'bg-teal-100/60',
+      badge: 'bg-teal-50 dark:bg-teal-950/60 text-teal-700 dark:text-teal-400 border-teal-200 dark:border-teal-800',
+      icon: 'text-teal-600 dark:text-teal-400',
+      track: 'bg-teal-100/60 dark:bg-teal-950/40',
     },
   }[theme];
 
@@ -69,11 +69,11 @@ export const ProgressLoading: React.FC<ProgressLoadingProps> = ({
         compact ? 'py-6 px-4' : 'py-14 px-6'
       } animate-fade-in`}
     >
-      <div className="w-full max-w-sm space-y-3.5 bg-white/80 backdrop-blur-md rounded-2xl p-5 border border-slate-200/80 shadow-sm text-center">
+      <div className="w-full max-w-sm space-y-3.5 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md rounded-2xl p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm text-center">
         {/* Header Icon & Message */}
         <div className="flex items-center justify-center space-x-2">
           <Loader2 className={`w-4 h-4 animate-spin ${themeStyles.icon}`} />
-          <span className="text-xs sm:text-sm font-semibold text-slate-700">
+          <span className="text-xs sm:text-sm font-semibold text-slate-700 dark:text-slate-200">
             {message}
           </span>
           <span
@@ -92,7 +92,7 @@ export const ProgressLoading: React.FC<ProgressLoadingProps> = ({
         </div>
 
         {/* Subtle subtext */}
-        <div className="flex items-center justify-between text-[11px] text-slate-400 font-medium px-1">
+        <div className="flex items-center justify-between text-[11px] text-slate-400 dark:text-slate-500 font-medium px-1">
           <span>Connecting</span>
           <span>Syncing Cloud</span>
         </div>
