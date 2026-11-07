@@ -114,7 +114,7 @@ export default function WalletsPage() {
     setEditingAccount(acc);
     setEditName(acc.name);
     setEditType(acc.type);
-    setEditBalance(String(acc.balance ?? 0));
+    setEditBalance(String(acc.startingBalance ?? acc.balance ?? 0));
     setEditBudgetLimit(acc.budgetLimit ? String(acc.budgetLimit) : '');
   };
 
@@ -201,6 +201,7 @@ export default function WalletsPage() {
       id: acc.id,
       name: acc.name,
       type: acc.type,
+      startingBalance: acc.startingBalance !== undefined ? Number(acc.startingBalance) : (monthly?.startingBalance !== undefined ? Number(monthly.startingBalance) : undefined),
       balance: Number(acc.balance) || 0,
       budgetLimit: acc.budgetLimit ? Number(acc.budgetLimit) : null,
       monthlyIncome: monthly?.monthlyIncome ?? 0,
@@ -331,7 +332,14 @@ export default function WalletsPage() {
               <div className="p-6 space-y-4">
                 {/* Overall Balance (Single Clean Display - Edit function is in the header) */}
                 <div>
-                  <span className="text-xs text-slate-500 font-medium uppercase tracking-wider">Overall Balance</span>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-slate-500 font-medium uppercase tracking-wider">Overall Balance</span>
+                    {acc.startingBalance !== undefined && acc.startingBalance > 0 && acc.monthlyExpense > 0 && (
+                      <span className="text-[11px] font-medium text-slate-400">
+                        Initial: {formatMMK(acc.startingBalance)}
+                      </span>
+                    )}
+                  </div>
                   <div className="text-2xl font-black text-slate-900 mt-0.5">
                     {formatMMK(acc.balance)}
                   </div>
@@ -563,7 +571,7 @@ export default function WalletsPage() {
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <label className="text-xs font-semibold text-slate-700 uppercase tracking-wider">
-                    {monthLabel} {year} Balance (MMK)
+                    {monthLabel} {year} Starting Balance (MMK)
                   </label>
                   <button
                     type="button"

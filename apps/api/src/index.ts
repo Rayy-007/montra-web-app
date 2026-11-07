@@ -71,6 +71,14 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
   });
 });
 
-app.listen(port, '0.0.0.0', () => {
+const server = app.listen(port, '0.0.0.0', () => {
   console.log(`🚀 Montra API Server is running on port ${port}`);
+});
+
+server.on('error', (err: any) => {
+  if (err.code === 'EADDRINUSE') {
+    console.error(`⚠️ Port ${port} is in use. Retrying or awaiting port release...`);
+  } else {
+    console.error('API server error:', err);
+  }
 });

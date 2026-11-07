@@ -15,9 +15,17 @@ router.get('/month', async (req: AuthRequest, res: Response) => {
     const endDate = new Date(year, month, 0, 23, 59, 59, 999);
 
     // Parallelize all DB reads in a single roundtrip
-    const [transactionTotals, incomePlans, budget, accounts, categoryExpenses, allCategories, monthlyBalances] = await Promise.all([
+    const [transactionTotals, accountTransactionTotals, incomePlans, budget, accounts, categoryExpenses, allCategories, monthlyBalances] = await Promise.all([
       prisma.transaction.groupBy({
         by: ['type'],
+        where: {
+          userId,
+          date: { gte: startDate, lte: endDate }
+        },
+        _sum: { amount: true }
+      }),
+      prisma.transaction.groupBy({
+        by: ['accountId', 'type'],
         where: {
           userId,
           date: { gte: startDate, lte: endDate }
@@ -66,6 +74,14 @@ router.get('/month', async (req: AuthRequest, res: Response) => {
       if (group.type === 'EXPENSE') actualExpense = amount;
     });
 
+    const accountIncomeMap = new Map<string, number>();
+    const accountExpenseMap = new Map<string, number>();
+    accountTransactionTotals.forEach((group) => {
+      const amount = Number(group._sum.amount || 0);
+      if (group.type === 'INCOME') accountIncomeMap.set(group.accountId, (accountIncomeMap.get(group.accountId) || 0) + amount);
+      if (group.type === 'EXPENSE') accountExpenseMap.set(group.accountId, (accountExpenseMap.get(group.accountId) || 0) + amount);
+    });
+
     const actualNet = actualIncome - actualExpense;
     const expectedIncome = incomePlans.reduce((sum, p) => sum + Number(p.expectedAmount), 0);
     const plannedExpense = budget ? budget.items.reduce((sum, item) => sum + Number(item.plannedAmount), 0) : 0;
@@ -76,13 +92,20 @@ router.get('/month', async (req: AuthRequest, res: Response) => {
       monthlyBalanceMap.set(row.accountId, Number(row.balance || 0));
     });
 
-    const monthAccounts = accounts.map((acc) => ({
-      id: acc.id,
-      name: acc.name,
-      type: acc.type,
-      balance: monthlyBalanceMap.has(acc.id) ? (monthlyBalanceMap.get(acc.id) || 0) : 0,
-      budgetLimit: acc.budgetLimit ? Number(acc.budgetLimit) : null
-    }));
+    const monthAccounts = accounts.map((acc) => {
+      const startingBalance = monthlyBalanceMap.has(acc.id) ? (monthlyBalanceMap.get(acc.id) || 0) : 0;
+      const accIncome = accountIncomeMap.get(acc.id) || 0;
+      const accExpense = accountExpenseMap.get(acc.id) || 0;
+      const balance = startingBalance + accIncome - accExpense;
+      return {
+        id: acc.id,
+        name: acc.name,
+        type: acc.type,
+        startingBalance,
+        balance,
+        budgetLimit: acc.budgetLimit ? Number(acc.budgetLimit) : null
+      };
+    });
 
     const totalWalletBalance = monthAccounts.reduce((sum, acc) => sum + Number(acc.balance), 0);
 

@@ -9,6 +9,7 @@ export interface Account {
   name: string;
   type: 'CASH' | 'MOBILE_WALLET' | 'BANK' | 'SAVINGS';
   balance: number;
+  startingBalance?: number;
   budgetLimit?: number | null;
 }
 

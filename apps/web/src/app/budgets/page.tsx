@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { 
@@ -15,12 +15,17 @@ import {
   X, 
   Trash2, 
   RotateCw,
-  Tag 
+  Tag,
+  Search,
+  ArrowUp,
+  ArrowDown,
+  ArrowUpDown
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useFinance } from '../../context/FinancialContext';
 import { formatMMK, formatNumber, MONTHS } from '../../lib/utils';
 import { ProgressLoading } from '../../components/ProgressLoading';
+import { SetBudgetModal, BudgetCategoryItem } from '../../components/SetBudgetModal';
 import api from '../../lib/api';
 
 const PRESET_COLORS = [
@@ -35,6 +40,9 @@ const PRESET_COLORS = [
   '#EAB308', // Yellow
   '#3B82F6', // Blue
 ];
+
+type BudgetSortKey = 'plannedAmount' | 'actualExpense' | 'diff' | 'categoryName';
+type SortOrder = 'asc' | 'desc';
 
 export default function BudgetsPage() {
   const router = useRouter();
@@ -56,9 +64,14 @@ export default function BudgetsPage() {
   });
   const [loading, setLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
-  const [editValue, setEditValue] = useState<string>('');
-  const [saving, setSaving] = useState(false);
+
+  // Set Budget Modal State
+  const [editingCategory, setEditingCategory] = useState<BudgetCategoryItem | null>(null);
+
+  // Sorting and Filtering State
+  const [sortBy, setSortBy] = useState<BudgetSortKey>('plannedAmount');
+  const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
+  const [searchTerm, setSearchTerm] = useState<string>('');
 
   // Add Custom Budget Modal State
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -111,44 +124,48 @@ export default function BudgetsPage() {
     }
   }, [user, month, year]);
 
-  const handleStartEdit = (cat: any) => {
-    setEditingCategoryId(cat.categoryId);
-    setEditValue(String(cat.plannedAmount || ''));
-  };
-
-  const handleSaveBudget = async (categoryId: string) => {
-    const amount = parseFloat(editValue.replace(/,/g, ''));
-    if (isNaN(amount) || amount < 0) return;
-
-    setSaving(true);
-    try {
-      await api.post('/budgets/items', {
-        month,
-        year,
-        categoryId,
-        plannedAmount: amount
-      });
-
-      setEditingCategoryId(null);
-      await loadBudgets();
-      refreshData();
-    } catch (err) {
-      console.error('Failed to update category budget:', err);
-    } finally {
-      setSaving(false);
-    }
-  };
-
   const handleDeleteBudgetItem = async (categoryId: string, categoryName: string) => {
     if (!confirm(`Reset budget allocation for "${categoryName}" to 0?`)) return;
     try {
       await api.delete(`/budgets/items/${categoryId}?month=${month}&year=${year}`);
-      await loadBudgets();
+      await loadBudgets(true);
       refreshData();
     } catch (err) {
       console.error('Failed to remove budget item:', err);
     }
   };
+
+  const handleToggleSort = (key: BudgetSortKey) => {
+    if (sortBy === key) {
+      setSortOrder((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortBy(key);
+      setSortOrder(key === 'categoryName' ? 'asc' : 'desc');
+    }
+  };
+
+  // Filtered and Sorted Categories
+  const filteredAndSortedCategories = useMemo(() => {
+    const list = (budgetData?.categories || []).filter((cat: any) => {
+      if (!searchTerm.trim()) return true;
+      return cat.categoryName.toLowerCase().includes(searchTerm.trim().toLowerCase());
+    });
+
+    return [...list].sort((a: any, b: any) => {
+      const valA = a[sortBy];
+      const valB = b[sortBy];
+
+      if (typeof valA === 'string') {
+        return sortOrder === 'asc'
+          ? valA.localeCompare(valB)
+          : valB.localeCompare(valA);
+      }
+
+      return sortOrder === 'asc'
+        ? (valA ?? 0) - (valB ?? 0)
+        : (valB ?? 0) - (valA ?? 0);
+    });
+  }, [budgetData?.categories, searchTerm, sortBy, sortOrder]);
 
   const handleCreateCustomBudget = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -181,7 +198,7 @@ export default function BudgetsPage() {
       setCustomCategoryName('');
       setCustomPlannedAmount('');
       setSelectedExistingCategoryId('');
-      await loadBudgets();
+      await loadBudgets(true);
       refreshData();
     } catch (err: any) {
       alert(err.response?.data?.message || 'Failed to add custom budget.');
@@ -199,9 +216,7 @@ export default function BudgetsPage() {
   }
 
   const currentMonthName = MONTHS.find((m) => m.value === month)?.label || 'Month';
-
-  // Categories available for allocation
-  const existingCategories = allCategories.filter(c => c.type === 'EXPENSE');
+  const existingCategories = allCategories.filter((c) => c.type === 'EXPENSE');
 
   return (
     <div className="space-y-8 animate-fade-in">
@@ -268,11 +283,64 @@ export default function BudgetsPage() {
         </div>
       </div>
 
-      {/* Budget Matrix Table */}
+      {/* Budget Matrix Table with Filter & Sort Toolbar */}
       <div className="bg-white rounded-3xl border border-slate-200/80 shadow-sm overflow-hidden">
-        <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
-          <h2 className="text-base font-bold text-slate-900">Categories Breakdown &amp; Variance</h2>
-          <span className="text-xs text-slate-400">Click planned amount to edit</span>
+        {/* Header Toolbar */}
+        <div className="p-4 sm:p-5 border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-3.5">
+          <div>
+            <h2 className="text-base font-bold text-slate-900">Categories Breakdown &amp; Variance</h2>
+            <p className="text-xs text-slate-400 mt-0.5">
+              Showing {filteredAndSortedCategories.length} of {budgetData.categories.length} categories
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2.5">
+            {/* Search Box */}
+            <div className="relative flex-1 sm:w-56 min-w-[180px]">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <input
+                type="text"
+                placeholder="Search category..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-9 pr-8 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 text-slate-700 placeholder:text-slate-400 transition-all font-medium"
+              />
+              {searchTerm && (
+                <button
+                  onClick={() => setSearchTerm('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+
+            {/* Sort Dropdown */}
+            <div className="relative flex-shrink-0">
+              <div className="flex items-center space-x-1.5 px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700">
+                <ArrowUpDown className="w-3.5 h-3.5 text-indigo-600" />
+                <span className="text-slate-400 font-normal">Sort:</span>
+                <select
+                  value={`${sortBy}-${sortOrder}`}
+                  onChange={(e) => {
+                    const [field, order] = e.target.value.split('-') as [BudgetSortKey, SortOrder];
+                    setSortBy(field);
+                    setSortOrder(order);
+                  }}
+                  className="bg-transparent focus:outline-none cursor-pointer pr-1 text-slate-800 font-bold"
+                >
+                  <option value="plannedAmount-desc">Budget: Highest first</option>
+                  <option value="plannedAmount-asc">Budget: Lowest first</option>
+                  <option value="actualExpense-desc">Spent: Highest first</option>
+                  <option value="actualExpense-asc">Spent: Lowest first</option>
+                  <option value="diff-asc">Remaining: Lowest / Exceeded</option>
+                  <option value="diff-desc">Remaining: Highest left</option>
+                  <option value="categoryName-asc">Category: A → Z</option>
+                  <option value="categoryName-desc">Category: Z → A</option>
+                </select>
+              </div>
+            </div>
+          </div>
         </div>
 
         {loading && budgetData.categories.length === 0 ? (
@@ -285,6 +353,18 @@ export default function BudgetsPage() {
             <p className="text-base font-semibold text-slate-600">No budget allocations found</p>
             <p className="text-xs text-slate-400 mt-1">Click &apos;Add Custom Budget&apos; to set up your first planned limit.</p>
           </div>
+        ) : filteredAndSortedCategories.length === 0 ? (
+          <div className="text-center py-12 text-slate-400">
+            <Search className="w-10 h-10 mx-auto mb-2 opacity-30 text-slate-400" />
+            <p className="text-sm font-semibold text-slate-600">No matching categories</p>
+            <p className="text-xs text-slate-400 mt-0.5">Try clearing your search query &quot;{searchTerm}&quot;</p>
+            <button
+              onClick={() => setSearchTerm('')}
+              className="mt-3 text-xs font-semibold text-indigo-600 hover:text-indigo-700 underline"
+            >
+              Clear search
+            </button>
+          </div>
         ) : (
           <>
             {/* Desktop Table View */}
@@ -292,20 +372,92 @@ export default function BudgetsPage() {
               <table className="w-full text-left text-sm">
                 <thead className="bg-slate-50 text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-slate-100">
                   <tr>
-                    <th className="px-6 py-3.5">Category</th>
-                    <th className="px-6 py-3.5">Planned Amount</th>
-                    <th className="px-6 py-3.5">Actual Expense</th>
-                    <th className="px-6 py-3.5">Diff (Remaining)</th>
+                    {/* Category Column Header */}
+                    <th
+                      onClick={() => handleToggleSort('categoryName')}
+                      className="px-6 py-3.5 cursor-pointer hover:bg-slate-100/80 transition-colors select-none"
+                    >
+                      <div className="flex items-center space-x-1.5">
+                        <span>Category</span>
+                        {sortBy === 'categoryName' ? (
+                          sortOrder === 'asc' ? (
+                            <ArrowUp className="w-3.5 h-3.5 text-indigo-600" />
+                          ) : (
+                            <ArrowDown className="w-3.5 h-3.5 text-indigo-600" />
+                          )
+                        ) : (
+                          <ArrowUpDown className="w-3 h-3 text-slate-300" />
+                        )}
+                      </div>
+                    </th>
+
+                    {/* Planned Amount Column Header */}
+                    <th
+                      onClick={() => handleToggleSort('plannedAmount')}
+                      className="px-6 py-3.5 cursor-pointer hover:bg-slate-100/80 transition-colors select-none"
+                    >
+                      <div className="flex items-center space-x-1.5">
+                        <span>Planned Budget</span>
+                        {sortBy === 'plannedAmount' ? (
+                          sortOrder === 'asc' ? (
+                            <ArrowUp className="w-3.5 h-3.5 text-indigo-600" />
+                          ) : (
+                            <ArrowDown className="w-3.5 h-3.5 text-indigo-600" />
+                          )
+                        ) : (
+                          <ArrowUpDown className="w-3 h-3 text-slate-300" />
+                        )}
+                      </div>
+                    </th>
+
+                    {/* Actual Expense Column Header */}
+                    <th
+                      onClick={() => handleToggleSort('actualExpense')}
+                      className="px-6 py-3.5 cursor-pointer hover:bg-slate-100/80 transition-colors select-none"
+                    >
+                      <div className="flex items-center space-x-1.5">
+                        <span>Actual Expense</span>
+                        {sortBy === 'actualExpense' ? (
+                          sortOrder === 'asc' ? (
+                            <ArrowUp className="w-3.5 h-3.5 text-indigo-600" />
+                          ) : (
+                            <ArrowDown className="w-3.5 h-3.5 text-indigo-600" />
+                          )
+                        ) : (
+                          <ArrowUpDown className="w-3 h-3 text-slate-300" />
+                        )}
+                      </div>
+                    </th>
+
+                    {/* Diff Column Header */}
+                    <th
+                      onClick={() => handleToggleSort('diff')}
+                      className="px-6 py-3.5 cursor-pointer hover:bg-slate-100/80 transition-colors select-none"
+                    >
+                      <div className="flex items-center space-x-1.5">
+                        <span>Diff (Remaining)</span>
+                        {sortBy === 'diff' ? (
+                          sortOrder === 'asc' ? (
+                            <ArrowUp className="w-3.5 h-3.5 text-indigo-600" />
+                          ) : (
+                            <ArrowDown className="w-3.5 h-3.5 text-indigo-600" />
+                          )
+                        ) : (
+                          <ArrowUpDown className="w-3 h-3 text-slate-300" />
+                        )}
+                      </div>
+                    </th>
+
                     <th className="px-6 py-3.5">Usage &amp; Progress</th>
                     <th className="px-6 py-3.5 text-right">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {budgetData.categories.map((cat: any) => {
-                    const isEditing = editingCategoryId === cat.categoryId;
+                  {filteredAndSortedCategories.map((cat: any) => {
                     const isOverBudget = cat.actualExpense > cat.plannedAmount && cat.plannedAmount > 0;
                     return (
                       <tr key={cat.categoryId} className="hover:bg-slate-50/60 transition-colors">
+                        {/* Category Name */}
                         <td className="px-6 py-4">
                           <div className="font-bold text-slate-900 flex items-center space-x-2">
                             <span
@@ -316,38 +468,19 @@ export default function BudgetsPage() {
                           </div>
                         </td>
 
-                        {/* Planned Amount (Editable) */}
+                        {/* Planned Amount (Click to open modal) */}
                         <td className="px-6 py-4">
-                          {isEditing ? (
-                            <div className="flex items-center space-x-2">
-                              <input
-                                type="number"
-                                value={editValue}
-                                onChange={(e) => setEditValue(e.target.value)}
-                                onKeyDown={(e) => {
-                                  if (e.key === 'Enter') handleSaveBudget(cat.categoryId);
-                                  if (e.key === 'Escape') setEditingCategoryId(null);
-                                }}
-                                className="w-28 text-xs font-bold px-2 py-1 bg-white border border-emerald-400 rounded-lg focus:outline-none"
-                                autoFocus
-                              />
-                              <button
-                                onClick={() => handleSaveBudget(cat.categoryId)}
-                                disabled={saving}
-                                className="p-1 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700"
-                              >
-                                <Save className="w-3.5 h-3.5" />
-                              </button>
-                            </div>
-                          ) : (
-                            <div
-                              onClick={() => handleStartEdit(cat)}
-                              className="font-bold text-slate-800 cursor-pointer hover:text-emerald-600 transition-colors flex items-center space-x-1.5"
-                            >
-                              <span>{formatMMK(cat.plannedAmount)}</span>
-                              <Edit2 className="w-3 h-3 text-slate-300" />
-                            </div>
-                          )}
+                          <button
+                            type="button"
+                            onClick={() => setEditingCategory(cat)}
+                            className="font-bold text-slate-800 hover:text-indigo-600 transition-colors inline-flex items-center space-x-1.5 group text-left"
+                            title="Click to set or adjust budget limit"
+                          >
+                            <span>{formatMMK(cat.plannedAmount)}</span>
+                            <span className="p-1 rounded-md text-slate-300 group-hover:text-indigo-600 group-hover:bg-indigo-50 transition-colors">
+                              <Edit2 className="w-3 h-3" />
+                            </span>
+                          </button>
                         </td>
 
                         {/* Total Actual Expense */}
@@ -391,20 +524,22 @@ export default function BudgetsPage() {
                           </div>
                         </td>
 
-                        {/* Action */}
+                        {/* Action Column */}
                         <td className="px-6 py-4 text-right">
                           <div className="flex items-center justify-end space-x-2">
                             <button
-                              onClick={() => handleStartEdit(cat)}
-                              className="text-xs font-semibold text-slate-500 hover:text-indigo-600 transition-colors"
+                              onClick={() => setEditingCategory(cat)}
+                              className="px-2.5 py-1 text-xs font-semibold text-indigo-600 hover:text-white hover:bg-indigo-600 bg-indigo-50 rounded-lg transition-colors inline-flex items-center space-x-1"
+                              title="Set or adjust budget limit"
                             >
-                              Adjust
+                              <Edit2 className="w-3 h-3" />
+                              <span>{cat.plannedAmount > 0 ? 'Adjust' : 'Set Limit'}</span>
                             </button>
                             {cat.plannedAmount > 0 && (
                               <button
                                 onClick={() => handleDeleteBudgetItem(cat.categoryId, cat.categoryName)}
                                 title="Reset allocation to 0"
-                                className="p-1 text-slate-300 hover:text-rose-600 rounded transition-colors"
+                                className="p-1.5 text-slate-300 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
                               </button>
@@ -420,8 +555,7 @@ export default function BudgetsPage() {
 
             {/* Mobile Card List View */}
             <div className="md:hidden divide-y divide-slate-100">
-              {budgetData.categories.map((cat: any) => {
-                const isEditing = editingCategoryId === cat.categoryId;
+              {filteredAndSortedCategories.map((cat: any) => {
                 const isOverBudget = cat.actualExpense > cat.plannedAmount && cat.plannedAmount > 0;
                 return (
                   <div key={cat.categoryId} className="p-4 space-y-3">
@@ -444,32 +578,14 @@ export default function BudgetsPage() {
                     <div className="grid grid-cols-2 gap-2 bg-slate-50 p-2.5 rounded-xl">
                       <div>
                         <div className="text-[10px] uppercase font-semibold text-slate-400">Planned Budget</div>
-                        {isEditing ? (
-                          <div className="flex items-center space-x-1.5 mt-0.5">
-                            <input
-                              type="number"
-                              value={editValue}
-                              onChange={(e) => setEditValue(e.target.value)}
-                              className="w-24 text-xs font-bold px-1.5 py-0.5 bg-white border border-emerald-400 rounded focus:outline-none"
-                              autoFocus
-                            />
-                            <button
-                              onClick={() => handleSaveBudget(cat.categoryId)}
-                              disabled={saving}
-                              className="p-1 bg-emerald-600 text-white rounded hover:bg-emerald-700"
-                            >
-                              <Save className="w-3 h-3" />
-                            </button>
-                          </div>
-                        ) : (
-                          <div
-                            onClick={() => handleStartEdit(cat)}
-                            className="text-xs font-bold text-slate-800 flex items-center space-x-1 cursor-pointer"
-                          >
-                            <span>{formatMMK(cat.plannedAmount)}</span>
-                            <Edit2 className="w-3 h-3 text-slate-400" />
-                          </div>
-                        )}
+                        <button
+                          type="button"
+                          onClick={() => setEditingCategory(cat)}
+                          className="text-xs font-bold text-slate-800 flex items-center space-x-1 cursor-pointer hover:text-indigo-600 transition-colors mt-0.5 text-left"
+                        >
+                          <span>{formatMMK(cat.plannedAmount)}</span>
+                          <Edit2 className="w-3 h-3 text-slate-400" />
+                        </button>
                       </div>
                       <div>
                         <div className="text-[10px] uppercase font-semibold text-slate-400">Actual Spent</div>
@@ -503,17 +619,19 @@ export default function BudgetsPage() {
                     </div>
 
                     {/* Quick Actions */}
-                    <div className="flex items-center justify-end space-x-3 pt-1">
+                    <div className="flex items-center justify-end space-x-2 pt-1">
                       <button
-                        onClick={() => handleStartEdit(cat)}
-                        className="text-xs font-semibold text-indigo-600 hover:text-indigo-700"
+                        onClick={() => setEditingCategory(cat)}
+                        className="px-2.5 py-1 text-xs font-semibold text-indigo-600 hover:text-white hover:bg-indigo-600 bg-indigo-50 rounded-lg transition-colors inline-flex items-center space-x-1"
                       >
-                        Adjust Limit
+                        <Edit2 className="w-3 h-3" />
+                        <span>{cat.plannedAmount > 0 ? 'Adjust' : 'Set Limit'}</span>
                       </button>
                       {cat.plannedAmount > 0 && (
                         <button
                           onClick={() => handleDeleteBudgetItem(cat.categoryId, cat.categoryName)}
-                          className="p-1 text-slate-400 hover:text-rose-600 transition-colors"
+                          className="p-1.5 text-slate-400 hover:text-rose-600 transition-colors"
+                          title="Reset allocation to 0"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
@@ -526,6 +644,19 @@ export default function BudgetsPage() {
           </>
         )}
       </div>
+
+      {/* Set Category Budget Modal */}
+      <SetBudgetModal
+        category={editingCategory}
+        isOpen={!!editingCategory}
+        month={month}
+        year={year}
+        onClose={() => setEditingCategory(null)}
+        onSuccess={() => {
+          loadBudgets(true);
+          refreshData();
+        }}
+      />
 
       {/* Add Custom Budget Modal */}
       {isAddModalOpen && typeof document !== 'undefined' && createPortal(

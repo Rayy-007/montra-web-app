@@ -111,6 +111,82 @@ router.post('/', async (req: AuthRequest, res: Response) => {
   }
 });
 
+// PUT update transaction (adjusts account balance atomically)
+router.put('/:id', async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user!.id;
+    const { id } = req.params;
+
+    const existingTx = await prisma.transaction.findFirst({
+      where: { id, userId }
+    });
+    if (!existingTx) {
+      return res.status(404).json({ message: 'Transaction not found' });
+    }
+
+    const updateSchema = transactionSchema.partial();
+    const parsed = updateSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: parsed.error.format() });
+    }
+
+    const newAccountId = parsed.data.accountId || existingTx.accountId;
+    const newAmount = parsed.data.amount !== undefined ? parsed.data.amount : Number(existingTx.amount);
+    const newType = parsed.data.type || existingTx.type;
+
+    // Verify target account belongs to user if accountId changed
+    if (parsed.data.accountId && parsed.data.accountId !== existingTx.accountId) {
+      const targetAcc = await prisma.account.findFirst({
+        where: { id: parsed.data.accountId, userId }
+      });
+      if (!targetAcc) {
+        return res.status(404).json({ message: 'Target account not found' });
+      }
+    }
+
+    const updated = await prisma.$transaction(async (tx) => {
+      // 1. Revert previous balance impact on old account
+      const oldAmount = Number(existingTx.amount);
+      const oldRevert = existingTx.type === 'INCOME' ? -oldAmount : oldAmount;
+      await tx.account.update({
+        where: { id: existingTx.accountId },
+        data: { balance: { increment: oldRevert } }
+      });
+
+      // 2. Apply new balance impact on new account
+      const newApply = newType === 'INCOME' ? newAmount : -newAmount;
+      await tx.account.update({
+        where: { id: newAccountId },
+        data: { balance: { increment: newApply } }
+      });
+
+      // 3. Update the transaction record
+      const updateData: any = {};
+      if (parsed.data.accountId) updateData.accountId = parsed.data.accountId;
+      if (parsed.data.categoryId !== undefined) updateData.categoryId = parsed.data.categoryId;
+      if (parsed.data.type) updateData.type = parsed.data.type;
+      if (parsed.data.amount !== undefined) updateData.amount = parsed.data.amount;
+      if (parsed.data.date) updateData.date = new Date(parsed.data.date);
+      if (parsed.data.description !== undefined) updateData.description = parsed.data.description;
+
+      const result = await tx.transaction.update({
+        where: { id },
+        data: updateData,
+        include: {
+          account: true,
+          category: true
+        }
+      });
+
+      return result;
+    });
+
+    res.json(updated);
+  } catch (error: any) {
+    res.status(500).json({ message: 'Failed to update transaction', error: error.message });
+  }
+});
+
 // DELETE transaction (reverts account balance atomically)
 router.delete('/:id', async (req: AuthRequest, res: Response) => {
   try {

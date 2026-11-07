@@ -81,15 +81,19 @@ router.get('/monthly', async (req: AuthRequest, res: Response) => {
       const monthlyExpense = expenseMap.get(account.id) || 0;
 
       // Respective month's balance:
-      // If balance exists for this month, use it. For uncreated / future months, reset to 0.
-      const balance = monthlyBalanceMap.has(account.id)
+      // If balance exists for this month, use it as starting balance. For uncreated / future months, reset to 0.
+      const startingBalance = monthlyBalanceMap.has(account.id)
         ? (monthlyBalanceMap.get(account.id) || 0)
         : 0;
+
+      // Overall balance reducing based on expense and increasing based on income:
+      const balance = startingBalance + monthlyIncome - monthlyExpense;
 
       return {
         id: account.id,
         name: account.name,
         type: account.type,
+        startingBalance,
         balance,
         budgetLimit: account.budgetLimit ? Number(account.budgetLimit) : null,
         monthlyIncome,
