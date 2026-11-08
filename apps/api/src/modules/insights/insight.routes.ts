@@ -5,7 +5,7 @@ import { authenticateJwt, AuthRequest } from '../../middleware/auth';
 const router = Router();
 router.use(authenticateJwt);
 
-router.get('/month', async (req: AuthRequest, res: Response) => {
+const getMonthlyInsights = async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user!.id;
     const month = parseInt(String(req.query.month || new Date().getMonth() + 1), 10);
@@ -142,6 +142,9 @@ router.get('/month', async (req: AuthRequest, res: Response) => {
   } catch (error: any) {
     res.status(500).json({ message: 'Failed to generate insights', error: error.message });
   }
-});
+};
+
+router.get('/month', getMonthlyInsights);
+router.get('/', getMonthlyInsights);
 
 export default router;

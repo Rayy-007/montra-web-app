@@ -16,13 +16,15 @@ import {
   Calendar,
   RotateCcw,
   Sun,
-  Moon
+  Moon,
+  Download
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useFinance } from '../context/FinancialContext';
 import { useTheme } from '../context/ThemeContext';
 import { MONTHS } from '../lib/utils';
 import { Logo } from './Logo';
+import { MonthlySummaryModal } from './MonthlySummaryModal';
 
 export const Navbar: React.FC = () => {
   const pathname = usePathname();
@@ -32,6 +34,7 @@ export const Navbar: React.FC = () => {
 
   const [isPickerOpen, setIsPickerOpen] = useState(false);
   const [pickerYear, setPickerYear] = useState<number>(year);
+  const [isSummaryModalOpen, setIsSummaryModalOpen] = useState(false);
   const pickerRef = useRef<HTMLDivElement>(null);
 
   const realDate = new Date();
@@ -239,9 +242,21 @@ export const Navbar: React.FC = () => {
                       })}
                     </div>
 
-                    {/* Explanatory Footer Tip */}
-                    <div className="mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-800 text-[11px] text-slate-400 dark:text-slate-500 text-center">
-                      Active period controls all ledger &amp; budget data
+                    {/* Explanatory Footer Tip & Export Button */}
+                    <div className="mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-800 space-y-2">
+                      <button
+                        onClick={() => {
+                          setIsPickerOpen(false);
+                          setIsSummaryModalOpen(true);
+                        }}
+                        className="w-full py-2 px-3 bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 text-emerald-700 dark:text-emerald-400 font-semibold rounded-xl text-xs flex items-center justify-center space-x-1.5 transition-colors border border-emerald-200/80 dark:border-emerald-800/60"
+                      >
+                        <Download className="w-3.5 h-3.5" />
+                        <span>Download {currentMonthLabel} {year} Summary (PDF)</span>
+                      </button>
+                      <div className="text-[11px] text-slate-400 dark:text-slate-500 text-center">
+                        Active period controls all ledger &amp; budget data
+                      </div>
                     </div>
                   </div>
                 )}
@@ -315,6 +330,14 @@ export const Navbar: React.FC = () => {
           })}
         </div>
       </nav>
+
+      {/* Monthly Summary PDF Modal */}
+      <MonthlySummaryModal
+        isOpen={isSummaryModalOpen}
+        onClose={() => setIsSummaryModalOpen(false)}
+        month={month}
+        year={year}
+      />
     </>
   );
 };

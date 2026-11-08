@@ -82,3 +82,15 @@ body {
 .animate-modal-slide {
   animation: modalSlideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
+
+/* Print Styles for PDF Export */
+@page {
+  size: A4 portrait;
+  margin: 10mm 12mm;
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+}
