@@ -12,13 +12,15 @@ import {
   Sparkles,
   PieChart as PieChartIcon,
   ChevronRight,
-  Clock
+  Clock,
+  Download
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useFinance } from '../../context/FinancialContext';
 import { formatMMK, MONTHS } from '../../lib/utils';
 import { AddExpenseModal } from '../../components/AddExpenseModal';
 import { AddIncomeModal } from '../../components/AddIncomeModal';
+import { MonthlySummaryModal } from '../../components/MonthlySummaryModal';
 import { ProgressLoading } from '../../components/ProgressLoading';
 import { InfoTooltip } from '../../components/InfoTooltip';
 import api from '../../lib/api';
@@ -30,6 +32,7 @@ export default function DashboardPage() {
 
   const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
   const [isIncomeModalOpen, setIsIncomeModalOpen] = useState(false);
+  const [isSummaryModalOpen, setIsSummaryModalOpen] = useState(false);
   const [recentTransactions, setRecentTransactions] = useState<any[]>([]);
 
   useEffect(() => {
@@ -91,7 +94,16 @@ export default function DashboardPage() {
         </div>
 
         {/* Quick Action Buttons */}
-        <div className="relative flex items-center space-x-3 w-full sm:w-auto">
+        <div className="relative flex flex-wrap items-center gap-2 sm:gap-2.5 w-full sm:w-auto">
+          <button
+            onClick={() => setIsSummaryModalOpen(true)}
+            title="Download Monthly Summary PDF"
+            className="flex-1 sm:flex-initial py-2.5 px-3.5 bg-slate-900 dark:bg-slate-100 hover:bg-slate-800 dark:hover:bg-white text-white dark:text-slate-900 font-semibold rounded-xl text-sm shadow-md transition-all duration-200 flex items-center justify-center space-x-1.5 cursor-pointer"
+          >
+            <Download className="w-4 h-4" />
+            <span>Summary (PDF)</span>
+          </button>
+
           <button
             onClick={() => setIsIncomeModalOpen(true)}
             className="flex-1 sm:flex-initial py-2.5 px-4 bg-white/60 dark:bg-slate-800/80 hover:bg-white/90 dark:hover:bg-slate-800 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20 dark:border-emerald-500/30 font-semibold rounded-xl text-sm transition-all duration-200 flex items-center justify-center space-x-2 shadow-sm backdrop-blur-xl"
@@ -359,6 +371,13 @@ export default function DashboardPage() {
           api.get(`/transactions?month=${month}&year=${year}`)
             .then((res) => setRecentTransactions(res.data.slice(0, 5)));
         }}
+      />
+
+      <MonthlySummaryModal
+        isOpen={isSummaryModalOpen}
+        onClose={() => setIsSummaryModalOpen(false)}
+        month={month}
+        year={year}
       />
     </div>
   );
