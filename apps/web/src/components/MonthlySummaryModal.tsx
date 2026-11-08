@@ -111,16 +111,76 @@ export function MonthlySummaryModal({
     setIsDownloading(true);
     try {
       const element = reportRef.current;
+      let clonedSectionBounds: { top: number; bottom: number }[] = [];
 
       // Render the element to high-res canvas (2x DPI for razor-sharp typography)
+      // windowWidth: 1024 guarantees that responsive classes render in desktop mode
+      // even if the user initiates download on mobile phones.
       const canvas = await html2canvas(element, {
         scale: 2,
         useCORS: true,
         logging: false,
-        backgroundColor: '#ffffff'
+        backgroundColor: '#ffffff',
+        windowWidth: 1024,
+        onclone: (clonedDoc, clonedElement) => {
+          // Standard A4 printable document width in pixels (800px corresponds to ~96 DPI A4 width)
+          clonedElement.style.width = '800px';
+          clonedElement.style.minWidth = '800px';
+          clonedElement.style.maxWidth = '800px';
+          clonedElement.style.padding = '36px';
+          clonedElement.style.margin = '0 auto';
+          clonedElement.style.boxSizing = 'border-box';
+          clonedElement.style.backgroundColor = '#ffffff';
+
+          // Force desktop flex on header
+          const header = clonedElement.querySelector('.pdf-header') as HTMLElement;
+          if (header) {
+            header.style.display = 'flex';
+            header.style.flexDirection = 'row';
+            header.style.justifyContent = 'space-between';
+            header.style.alignItems = 'center';
+            header.style.textAlign = 'left';
+          }
+          const headerRight = clonedElement.querySelector('.pdf-header-right') as HTMLElement;
+          if (headerRight) {
+            headerRight.style.textAlign = 'right';
+          }
+
+          // Force 4 columns on KPI cards
+          const kpiGrid = clonedElement.querySelector('.pdf-kpi-grid') as HTMLElement;
+          if (kpiGrid) {
+            kpiGrid.style.display = 'grid';
+            kpiGrid.style.gridTemplateColumns = 'repeat(4, minmax(0, 1fr))';
+            kpiGrid.style.gap = '14px';
+          }
+
+          // Expand all tables so horizontal scrollbars/cuts never happen in the PDF
+          const tableWrappers = clonedElement.querySelectorAll('.overflow-x-auto');
+          tableWrappers.forEach((tw) => {
+            const el = tw as HTMLElement;
+            el.style.overflow = 'visible';
+            el.style.width = '100%';
+          });
+
+          const tables = clonedElement.querySelectorAll('table');
+          tables.forEach((t) => {
+            t.style.width = '100%';
+          });
+
+          // Measure section coordinates in 800px layout
+          const clonedRect = clonedElement.getBoundingClientRect();
+          const clonedSections = clonedElement.querySelectorAll('.pdf-section');
+          clonedSectionBounds = [];
+          clonedSections.forEach((sec) => {
+            const r = sec.getBoundingClientRect();
+            clonedSectionBounds.push({
+              top: r.top - clonedRect.top,
+              bottom: r.bottom - clonedRect.top,
+            });
+          });
+        }
       });
 
-      const imgData = canvas.toDataURL('image/png');
       const pdf = new jsPDF({
         orientation: 'p',
         unit: 'mm',
@@ -129,23 +189,87 @@ export function MonthlySummaryModal({
 
       const pageWidth = 210; // A4 standard width in mm
       const pageHeight = 297; // A4 standard height in mm
-      const imgWidth = pageWidth;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      const marginX = 12; // mm
+      const marginTop = 12; // mm
+      const marginBottom = 12; // mm
+      const contentWidth = pageWidth - (marginX * 2); // 186 mm
+      const contentHeight = pageHeight - marginTop - marginBottom; // 273 mm
 
-      let heightLeft = imgHeight;
-      let position = 0;
+      // Canvas scale (canvas.width is at scale: 2 of 800px, so scale = canvas.width / 800)
+      const scale = canvas.width / 800;
+      const pxPerMm = canvas.width / contentWidth;
+      const maxCanvasPageHeight = contentHeight * pxPerMm;
 
-      // Add first page
-      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight, undefined, 'FAST');
-      heightLeft -= pageHeight;
+      // Calculate slice cut points without breaking through any section
+      const cuts: { startY: number; endY: number }[] = [];
+      let currentY = 0;
 
-      // Add remaining pages if content spans multiple pages
-      while (heightLeft > 0) {
-        position = heightLeft - imgHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight, undefined, 'FAST');
-        heightLeft -= pageHeight;
+      while (currentY < canvas.height) {
+        let targetEndY = currentY + maxCanvasPageHeight;
+
+        if (targetEndY >= canvas.height) {
+          cuts.push({ startY: currentY, endY: canvas.height });
+          break;
+        }
+
+        // Check if targetEndY slices across any section
+        let bestCutY = targetEndY;
+        for (const bound of clonedSectionBounds) {
+          const sectionTop = bound.top * scale;
+          const sectionBottom = bound.bottom * scale;
+
+          // If target cut falls within this section
+          if (targetEndY > sectionTop && targetEndY < sectionBottom) {
+            // Cut just before this section if there's enough room on this page
+            if (sectionTop > currentY + (40 * scale)) {
+              bestCutY = sectionTop - (6 * scale);
+              break;
+            }
+          }
+        }
+
+        cuts.push({ startY: currentY, endY: bestCutY });
+        currentY = bestCutY;
       }
+
+      // Render each slice onto the PDF
+      cuts.forEach((cut, index) => {
+        const sliceHeight = cut.endY - cut.startY;
+        if (sliceHeight <= 0) return;
+
+        const sliceCanvas = document.createElement('canvas');
+        sliceCanvas.width = canvas.width;
+        sliceCanvas.height = sliceHeight;
+
+        const ctx = sliceCanvas.getContext('2d');
+        if (ctx) {
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height);
+          ctx.drawImage(
+            canvas,
+            0, cut.startY, canvas.width, sliceHeight,
+            0, 0, canvas.width, sliceHeight
+          );
+
+          const sliceImgData = sliceCanvas.toDataURL('image/png');
+          const sliceHeightMM = (sliceHeight * contentWidth) / canvas.width;
+
+          if (index > 0) {
+            pdf.addPage();
+          }
+
+          pdf.addImage(
+            sliceImgData,
+            'PNG',
+            marginX,
+            marginTop,
+            contentWidth,
+            sliceHeightMM,
+            undefined,
+            'FAST'
+          );
+        }
+      });
 
       // Trigger instant direct file download
       const safeMonthName = monthLabel.replace(/\s+/g, '-');
@@ -229,40 +353,40 @@ export function MonthlySummaryModal({
     ? createPortal(
         <div className="fixed inset-0 z-[9999] flex flex-col bg-slate-900/80 backdrop-blur-md overflow-y-auto">
           {/* Top Sticky Toolbar (Hidden in Print) */}
-          <div className="no-print sticky top-0 z-50 flex items-center justify-between px-4 sm:px-8 py-3.5 bg-slate-900/90 backdrop-blur-xl border-b border-slate-800 text-white shadow-lg">
-            <div className="flex items-center space-x-3">
+          <div className="no-print sticky top-0 z-50 flex items-center justify-between px-3 sm:px-8 py-3 bg-slate-900/90 backdrop-blur-xl border-b border-slate-800 text-white shadow-lg">
+            <div className="flex items-center space-x-2.5 sm:space-x-3">
               <div className="w-8 h-8 rounded-xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
                 <FileText className="w-4 h-4" />
               </div>
               <div>
-                <h2 className="text-sm sm:text-base font-bold text-white tracking-tight">
+                <h2 className="text-xs sm:text-base font-bold text-white tracking-tight">
                   Monthly Statement Report
                 </h2>
-                <p className="text-xs text-slate-400">
+                <p className="text-[11px] sm:text-xs text-slate-400">
                   {monthLabel} {year} • Financial Summary
                 </p>
               </div>
             </div>
 
-            <div className="flex items-center space-x-2.5">
+            <div className="flex items-center space-x-2">
               {/* Direct PDF Download Button */}
               <button
                 type="button"
                 onClick={handleDownloadPDF}
                 disabled={loading || isDownloading}
-                className="py-2 px-3.5 sm:px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl text-xs sm:text-sm shadow-md shadow-emerald-600/20 transition-all flex items-center space-x-2 disabled:opacity-50 cursor-pointer"
+                className="py-2 px-3 sm:px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl text-xs sm:text-sm shadow-md shadow-emerald-600/20 transition-all flex items-center space-x-1.5 sm:space-x-2 disabled:opacity-50 cursor-pointer"
                 title="Download PDF File"
               >
                 {isDownloading ? (
                   <>
-                    <RotateCw className="w-4 h-4 animate-spin" />
-                    <span>Generating PDF...</span>
+                    <RotateCw className="w-3.5 h-3.5 sm:w-4 sm:h-4 animate-spin" />
+                    <span>Generating...</span>
                   </>
                 ) : (
                   <>
-                    <Download className="w-4 h-4" />
+                    <Download className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                     <span className="hidden sm:inline">Download as PDF</span>
-                    <span className="sm:hidden">Download</span>
+                    <span className="sm:hidden">Download PDF</span>
                   </>
                 )}
               </button>
@@ -272,7 +396,7 @@ export function MonthlySummaryModal({
                 type="button"
                 onClick={handlePrint}
                 disabled={loading || isDownloading}
-                className="p-2 text-slate-300 hover:text-white rounded-xl hover:bg-slate-800 transition-colors border border-slate-700 hidden sm:flex items-center justify-center"
+                className="p-2 text-slate-300 hover:text-white rounded-xl hover:bg-slate-800 transition-colors border border-slate-700 hidden md:flex items-center justify-center"
                 title="Print Document"
               >
                 <Printer className="w-4 h-4" />
@@ -301,84 +425,87 @@ export function MonthlySummaryModal({
               <div
                 ref={reportRef}
                 id="monthly-summary-printable"
-                className="w-full max-w-4xl bg-white text-slate-900 rounded-2xl shadow-2xl p-6 sm:p-10 space-y-8 my-auto border border-slate-200"
+                className="w-full max-w-4xl bg-white text-slate-900 rounded-2xl shadow-2xl p-4 sm:p-10 space-y-6 sm:space-y-8 my-auto border border-slate-200"
               >
-                {/* Document Header */}
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between pb-6 border-b border-slate-200 gap-4">
-                  <div className="flex items-center space-x-3.5">
-                    <Logo size={44} />
-                    <div>
-                      <div className="text-lg font-black tracking-tight text-slate-900">
-                        MONTRA
+                {/* Block 0: Document Header & Executive KPIs */}
+                <div className="pdf-section space-y-6">
+                  {/* Document Header */}
+                  <div className="pdf-header flex flex-col sm:flex-row items-start sm:items-center justify-between pb-6 border-b border-slate-200 gap-4">
+                    <div className="flex items-center space-x-3.5">
+                      <Logo size={44} />
+                      <div>
+                        <div className="text-lg font-black tracking-tight text-slate-900">
+                          MONTRA
+                        </div>
+                        <div className="text-xs font-semibold uppercase tracking-wider text-emerald-600">
+                          Modern Money Tracker
+                        </div>
                       </div>
-                      <div className="text-xs font-semibold uppercase tracking-wider text-emerald-600">
-                        Modern Money Tracker
+                    </div>
+
+                    <div className="pdf-header-right text-left sm:text-right space-y-0.5">
+                      <div className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+                        Financial Summary
+                      </div>
+                      <div className="text-sm font-bold text-emerald-600">
+                        {monthLabel} {year}
+                      </div>
+                      <div className="text-xs text-slate-500">
+                        Generated: {currentDateStr} • User: {user?.name || 'Account Holder'}
                       </div>
                     </div>
                   </div>
 
-                  <div className="text-left sm:text-right space-y-0.5">
-                    <div className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
-                      Financial Summary
+                  {/* Executive KPI Performance Ribbon */}
+                  <div className="pdf-kpi-grid grid grid-cols-2 sm:grid-cols-4 gap-3.5">
+                    <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3.5 space-y-1">
+                      <div className="text-[11px] font-semibold uppercase tracking-wider text-emerald-600 flex items-center space-x-1">
+                        <TrendingUp className="w-3.5 h-3.5" />
+                        <span>Total Income</span>
+                      </div>
+                      <div className="text-lg sm:text-xl font-black text-emerald-600">
+                        {formatMMK(actualIncome)}
+                      </div>
                     </div>
-                    <div className="text-sm font-bold text-emerald-600">
-                      {monthLabel} {year}
-                    </div>
-                    <div className="text-xs text-slate-500">
-                      Generated: {currentDateStr} • User: {user?.name || 'Account Holder'}
-                    </div>
-                  </div>
-                </div>
 
-                {/* Executive KPI Performance Ribbon */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
-                  <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3.5 space-y-1">
-                    <div className="text-[11px] font-semibold uppercase tracking-wider text-emerald-600 flex items-center space-x-1">
-                      <TrendingUp className="w-3.5 h-3.5" />
-                      <span>Total Income</span>
+                    <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3.5 space-y-1">
+                      <div className="text-[11px] font-semibold uppercase tracking-wider text-rose-500 flex items-center space-x-1">
+                        <TrendingDown className="w-3.5 h-3.5" />
+                        <span>Total Expense</span>
+                      </div>
+                      <div className="text-lg sm:text-xl font-black text-rose-600">
+                        {formatMMK(actualExpense)}
+                      </div>
                     </div>
-                    <div className="text-lg sm:text-xl font-black text-emerald-600">
-                      {formatMMK(actualIncome)}
-                    </div>
-                  </div>
 
-                  <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3.5 space-y-1">
-                    <div className="text-[11px] font-semibold uppercase tracking-wider text-rose-500 flex items-center space-x-1">
-                      <TrendingDown className="w-3.5 h-3.5" />
-                      <span>Total Expense</span>
+                    <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3.5 space-y-1">
+                      <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-600 flex items-center space-x-1">
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        <span>Net Savings</span>
+                      </div>
+                      <div
+                        className={`text-lg sm:text-xl font-black ${
+                          netSurplus >= 0 ? 'text-emerald-700' : 'text-rose-600'
+                        }`}
+                      >
+                        {formatMMK(netSurplus)}
+                      </div>
                     </div>
-                    <div className="text-lg sm:text-xl font-black text-rose-600">
-                      {formatMMK(actualExpense)}
-                    </div>
-                  </div>
 
-                  <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3.5 space-y-1">
-                    <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-600 flex items-center space-x-1">
-                      <CheckCircle2 className="w-3.5 h-3.5" />
-                      <span>Net Savings</span>
-                    </div>
-                    <div
-                      className={`text-lg sm:text-xl font-black ${
-                        netSurplus >= 0 ? 'text-emerald-700' : 'text-rose-600'
-                      }`}
-                    >
-                      {formatMMK(netSurplus)}
-                    </div>
-                  </div>
-
-                  <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3.5 space-y-1">
-                    <div className="text-[11px] font-semibold uppercase tracking-wider text-teal-700 flex items-center space-x-1">
-                      <Wallet className="w-3.5 h-3.5" />
-                      <span>Total Liquid</span>
-                    </div>
-                    <div className="text-lg sm:text-xl font-black text-slate-900">
-                      {formatMMK(totalLiquid)}
+                    <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3.5 space-y-1">
+                      <div className="text-[11px] font-semibold uppercase tracking-wider text-teal-700 flex items-center space-x-1">
+                        <Wallet className="w-3.5 h-3.5" />
+                        <span>Total Liquid</span>
+                      </div>
+                      <div className="text-lg sm:text-xl font-black text-slate-900">
+                        {formatMMK(totalLiquid)}
+                      </div>
                     </div>
                   </div>
                 </div>
 
                 {/* Section 1: Initial Wallets & Monthly Flow */}
-                <div className="space-y-3">
+                <div className="pdf-section space-y-3">
                   <div className="flex items-center justify-between pb-1 border-b border-slate-100">
                     <h3 className="text-sm font-bold uppercase tracking-wider text-slate-900 flex items-center space-x-2">
                       <Wallet className="w-4 h-4 text-emerald-600" />
@@ -451,7 +578,7 @@ export function MonthlySummaryModal({
                 </div>
 
                 {/* Section 2: Budget Allocation (ONLY Set Budgets) */}
-                <div className="space-y-3">
+                <div className="pdf-section space-y-3">
                   <div className="flex items-center justify-between pb-1 border-b border-slate-100">
                     <h3 className="text-sm font-bold uppercase tracking-wider text-slate-900 flex items-center space-x-2">
                       <PieChartIcon className="w-4 h-4 text-indigo-600" />
@@ -548,7 +675,7 @@ export function MonthlySummaryModal({
                 </div>
 
                 {/* Section 3: Income Streams Summary */}
-                <div className="space-y-3">
+                <div className="pdf-section space-y-3">
                   <div className="flex items-center justify-between pb-1 border-b border-slate-100">
                     <h3 className="text-sm font-bold uppercase tracking-wider text-slate-900 flex items-center space-x-2">
                       <TrendingUp className="w-4 h-4 text-emerald-600" />
@@ -626,7 +753,7 @@ export function MonthlySummaryModal({
                 </div>
 
                 {/* Section 4: Expense Categories Breakdown */}
-                <div className="space-y-3">
+                <div className="pdf-section space-y-3">
                   <div className="flex items-center justify-between pb-1 border-b border-slate-100">
                     <h3 className="text-sm font-bold uppercase tracking-wider text-slate-900 flex items-center space-x-2">
                       <TrendingDown className="w-4 h-4 text-rose-500" />
@@ -679,7 +806,7 @@ export function MonthlySummaryModal({
                 </div>
 
                 {/* Report Footer */}
-                <div className="pt-6 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between text-[11px] text-slate-400 gap-2">
+                <div className="pdf-section pdf-footer pt-6 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between text-[11px] text-slate-400 gap-2">
                   <div>
                     Generated by Montra Money Tracker • Confidential &amp; Private Document
                   </div>
