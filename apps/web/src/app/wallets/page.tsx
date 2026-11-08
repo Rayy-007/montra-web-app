@@ -24,6 +24,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useFinance } from '../../context/FinancialContext';
 import { formatMMK, MONTHS } from '../../lib/utils';
 import { ProgressLoading } from '../../components/ProgressLoading';
+import { InfoTooltip } from '../../components/InfoTooltip';
 import api from '../../lib/api';
 
 export default function WalletsPage() {
@@ -224,12 +225,13 @@ export default function WalletsPage() {
             <Wallet className="w-4 h-4" />
             <span>Multi-Account Management</span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
-            Wallets & Accounts
+          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-slate-100 tracking-tight mt-0.5">
+            Wallets &amp; Accounts
           </h1>
-          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
-            Viewing data for <span className="font-semibold text-teal-600 dark:text-teal-400">{monthLabel} {year}</span> — Keep separate ledgers for cash, digital wallets, bank accounts, and savings.
-          </p>
+          <div className="flex items-center space-x-1.5 text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-medium mt-1">
+            <span className="font-semibold text-slate-700 dark:text-slate-300">{monthLabel} {year}</span>
+            <InfoTooltip content="Keep separate ledgers for cash, digital wallets, bank accounts, and savings with live monthly tracking." />
+          </div>
         </div>
 
         <div className="flex items-center space-x-2.5">

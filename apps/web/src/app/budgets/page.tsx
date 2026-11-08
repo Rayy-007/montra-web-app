@@ -26,6 +26,7 @@ import { useFinance } from '../../context/FinancialContext';
 import { formatMMK, formatNumber, MONTHS } from '../../lib/utils';
 import { ProgressLoading } from '../../components/ProgressLoading';
 import { SetBudgetModal, BudgetCategoryItem } from '../../components/SetBudgetModal';
+import { InfoTooltip } from '../../components/InfoTooltip';
 import api from '../../lib/api';
 
 const PRESET_COLORS = [
@@ -225,14 +226,15 @@ export default function BudgetsPage() {
         <div>
           <div className="flex items-center space-x-2 text-indigo-600 dark:text-indigo-400 text-xs font-semibold uppercase tracking-wider">
             <PieChartIcon className="w-4 h-4" />
-            <span>Monthly Budget &amp; Spending Variance</span>
+            <span>Budget Planner</span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
-            {currentMonthName} {year} Budget Planner
+          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-slate-100 tracking-tight mt-0.5">
+            Budgets
           </h1>
-          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
-            Allocate planned spending limits and track real-time variance directly per category.
-          </p>
+          <div className="flex items-center space-x-1.5 text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-medium mt-1">
+            <span className="font-semibold text-slate-700 dark:text-slate-300">{currentMonthName} {year}</span>
+            <InfoTooltip content="Allocate planned spending limits and track real-time variance directly per category." />
+          </div>
         </div>
 
         <div className="flex items-center space-x-2">

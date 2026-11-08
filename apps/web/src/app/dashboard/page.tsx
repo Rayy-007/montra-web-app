@@ -20,6 +20,7 @@ import { formatMMK, MONTHS } from '../../lib/utils';
 import { AddExpenseModal } from '../../components/AddExpenseModal';
 import { AddIncomeModal } from '../../components/AddIncomeModal';
 import { ProgressLoading } from '../../components/ProgressLoading';
+import { InfoTooltip } from '../../components/InfoTooltip';
 import api from '../../lib/api';
 
 export default function DashboardPage() {
@@ -71,19 +72,22 @@ export default function DashboardPage() {
         <div className="relative space-y-1">
           <div className="flex items-center space-x-2 text-emerald-600 dark:text-emerald-400 text-xs font-semibold uppercase tracking-wider">
             <Sparkles className="w-3.5 h-3.5" />
-            <span>Monthly Financial Overview</span>
+            <span>Financial Overview</span>
           </div>
 
-          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900 dark:text-slate-100">
-            {currentMonthName} {year} Financials
+          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900 dark:text-slate-100 mt-0.5">
+            Dashboard
           </h1>
 
-          <p className="text-slate-500 dark:text-slate-400 text-xs sm:text-sm">
-            Total Combined Wallet Liquid Balance:
-            <span className="text-slate-900 dark:text-slate-100 font-bold text-base ml-1">
+          <div className="flex flex-wrap items-center gap-1.5 text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-medium pt-0.5">
+            <span className="font-semibold text-slate-700 dark:text-slate-300">{currentMonthName} {year}</span>
+            <InfoTooltip content="High-level summary of your realized cashflow, wallet liquidity, and monthly variance." />
+            <span className="text-slate-300 dark:text-slate-700 hidden sm:inline">•</span>
+            <span className="text-xs text-slate-500 dark:text-slate-400">Total Liquid Balance:</span>
+            <span className="text-emerald-600 dark:text-emerald-400 font-bold">
               {formatMMK(insights?.totalWalletBalance || 0)}
             </span>
-          </p>
+          </div>
         </div>
 
         {/* Quick Action Buttons */}
@@ -120,21 +124,21 @@ export default function DashboardPage() {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
-            <div className="bg-slate-50/70 dark:bg-slate-800/50 sm:bg-transparent p-3 sm:p-0 rounded-2xl sm:rounded-none space-y-1">
+            <div className="bg-slate-50/70 dark:bg-slate-800/50 dark:sm:bg-transparent sm:bg-transparent p-3 sm:p-0 rounded-2xl sm:rounded-none space-y-1">
               <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Actual Income</span>
               <div className="text-lg sm:text-xl font-extrabold text-emerald-600 dark:text-emerald-400 truncate">
                 {formatMMK(insights?.actualInsight.totalIncome || 0)}
               </div>
             </div>
 
-            <div className="bg-slate-50/70 dark:bg-slate-800/50 sm:bg-transparent p-3 sm:p-0 rounded-2xl sm:rounded-none space-y-1">
+            <div className="bg-slate-50/70 dark:bg-slate-800/50 dark:dark:sm:bg-transparent sm:bg-transparent p-3 sm:p-0 rounded-2xl sm:rounded-none space-y-1">
               <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Actual Expense</span>
               <div className="text-lg sm:text-xl font-extrabold text-rose-600 dark:text-rose-400 truncate">
                 {formatMMK(insights?.actualInsight.totalExpense || 0)}
               </div>
             </div>
 
-            <div className="bg-slate-50/70 dark:bg-slate-800/50 sm:bg-transparent p-3 sm:p-0 rounded-2xl sm:rounded-none space-y-1">
+            <div className="bg-slate-50/70 dark:bg-slate-800/50 dark:sm:bg-transparent sm:bg-transparent p-3 sm:p-0 rounded-2xl sm:rounded-none space-y-1">
               <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Net Surplus</span>
               <div className={`text-lg sm:text-xl font-extrabold truncate ${(insights?.actualInsight.net || 0) >= 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'
                 }`}>
@@ -156,21 +160,21 @@ export default function DashboardPage() {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
-            <div className="bg-slate-50/70 dark:bg-slate-800/50 sm:bg-transparent p-3 sm:p-0 rounded-2xl sm:rounded-none space-y-1">
+            <div className="bg-slate-50/70 dark:bg-slate-800/50 dark:sm:bg-transparent sm:bg-transparent p-3 sm:p-0 rounded-2xl sm:rounded-none space-y-1">
               <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Expected Income</span>
               <div className="text-lg sm:text-xl font-extrabold text-indigo-600 dark:text-indigo-400 truncate">
                 {formatMMK(insights?.expectedInsight.totalIncome || 0)}
               </div>
             </div>
 
-            <div className="bg-slate-50/70 dark:bg-slate-800/50 sm:bg-transparent p-3 sm:p-0 rounded-2xl sm:rounded-none space-y-1">
+            <div className="bg-slate-50/70 dark:bg-slate-800/50 dark:sm:bg-transparent sm:bg-transparent p-3 sm:p-0 rounded-2xl sm:rounded-none space-y-1">
               <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Planned Budget</span>
               <div className="text-lg sm:text-xl font-extrabold text-slate-700 dark:text-slate-200 truncate">
                 {formatMMK(insights?.expectedInsight.totalExpense || 0)}
               </div>
             </div>
 
-            <div className="bg-slate-50/70 dark:bg-slate-800/50 sm:bg-transparent p-3 sm:p-0 rounded-2xl sm:rounded-none space-y-1">
+            <div className="bg-slate-50/70 dark:bg-slate-800/50 dark:sm:bg-transparent sm:bg-transparent p-3 sm:p-0 rounded-2xl sm:rounded-none space-y-1">
               <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Expected Net</span>
               <div className={`text-lg sm:text-xl font-extrabold truncate ${(insights?.expectedInsight.net || 0) >= 0 ? 'text-indigo-700 dark:text-indigo-400' : 'text-rose-600 dark:text-rose-400'
                 }`}>

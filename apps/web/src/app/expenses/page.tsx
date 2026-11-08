@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { 
   Receipt, 
@@ -17,7 +17,9 @@ import {
   ArrowUp,
   ArrowDown,
   ArrowUpDown,
-  X
+  X,
+  TrendingDown,
+  Flame
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useFinance } from '../../context/FinancialContext';
@@ -25,6 +27,7 @@ import { formatMMK, MONTHS } from '../../lib/utils';
 import { AddExpenseModal } from '../../components/AddExpenseModal';
 import { EditExpenseModal } from '../../components/EditExpenseModal';
 import { ProgressLoading } from '../../components/ProgressLoading';
+import { InfoTooltip } from '../../components/InfoTooltip';
 import api from '../../lib/api';
 
 export default function ExpensesPage() {
@@ -150,6 +153,40 @@ export default function ExpensesPage() {
 
   const totalFilteredExpense = filteredTransactions.reduce((sum, tx) => sum + Number(tx.amount), 0);
 
+  // Most total expense amount category calculation
+  const { topCategory, topCategoryPercentage } = useMemo(() => {
+    if (!filteredTransactions.length || totalFilteredExpense <= 0) {
+      return { topCategory: null, topCategoryPercentage: 0 };
+    }
+
+    const categoryMap: Record<string, { id: string; name: string; color?: string; total: number; count: number }> = {};
+
+    filteredTransactions.forEach((tx) => {
+      const catId = tx.categoryId || tx.category?.id || 'uncategorized';
+      const catName = tx.category?.name || 'Uncategorized';
+      const catColor = tx.category?.color || '#f43f5e';
+      const amount = Number(tx.amount) || 0;
+
+      if (!categoryMap[catId]) {
+        categoryMap[catId] = {
+          id: catId,
+          name: catName,
+          color: catColor,
+          total: 0,
+          count: 0,
+        };
+      }
+      categoryMap[catId].total += amount;
+      categoryMap[catId].count += 1;
+    });
+
+    const sorted = Object.values(categoryMap).sort((a, b) => b.total - a.total);
+    const top = sorted[0] || null;
+    const percentage = top ? Math.round((top.total / totalFilteredExpense) * 100) : 0;
+
+    return { topCategory: top, topCategoryPercentage: percentage };
+  }, [filteredTransactions, totalFilteredExpense]);
+
   if (authLoading || !user) {
     return (
       <div className="min-h-[70vh] flex items-center justify-center">
@@ -169,12 +206,13 @@ export default function ExpensesPage() {
             <Receipt className="w-4 h-4" />
             <span>Expense Ledger</span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
-            {currentMonthName} {year} Expenses
+          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-slate-100 tracking-tight mt-0.5">
+            Expenses
           </h1>
-          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
-            Total Logged Spending: <span className="text-rose-600 dark:text-rose-400 font-bold ml-1">{formatMMK(totalFilteredExpense)}</span>
-          </p>
+          <div className="flex items-center space-x-1.5 text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-medium mt-1">
+            <span className="font-semibold text-slate-700 dark:text-slate-300">{currentMonthName} {year}</span>
+            <InfoTooltip content="Track and categorize every outgoing transaction across your cash and digital accounts with real-time analytics." />
+          </div>
         </div>
 
         <div className="flex items-center space-x-2.5">
@@ -202,6 +240,77 @@ export default function ExpensesPage() {
             <Plus className="w-4 h-4" />
             <span>Add New Expense</span>
           </button>
+        </div>
+      </div>
+
+      {/* Summary KPI Cards: Total Expense & Most Total Expense Amount Category */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {/* Total Expense Card */}
+        <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm relative overflow-hidden transition-all hover:shadow-md">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center space-x-2 text-rose-600 dark:text-rose-400 text-xs font-semibold uppercase tracking-wider">
+              <TrendingDown className="w-4 h-4" />
+              <span>Total Expense</span>
+            </div>
+            <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200/80 dark:border-rose-900/60">
+              {filteredTransactions.length} {filteredTransactions.length === 1 ? 'entry' : 'entries'}
+            </span>
+          </div>
+          <div className="text-2xl sm:text-3xl font-black text-rose-600 dark:text-rose-400 tracking-tight">
+            {formatMMK(totalFilteredExpense)}
+          </div>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+            {searchTerm || selectedWallet !== 'ALL' || selectedCategory !== 'ALL' ? (
+              <span>Filtered expenses for <strong className="text-slate-700 dark:text-slate-300">{currentMonthName} {year}</strong></span>
+            ) : (
+              <span>Total spending logged in <strong className="text-slate-700 dark:text-slate-300">{currentMonthName} {year}</strong></span>
+            )}
+          </p>
+        </div>
+
+        {/* Most Total Expense Amount Category Card */}
+        <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm relative overflow-hidden transition-all hover:shadow-md">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center space-x-2 text-amber-600 dark:text-amber-400 text-xs font-semibold uppercase tracking-wider">
+              <Flame className="w-4 h-4" />
+              <span>Top Spending Category</span>
+            </div>
+            {topCategory && (
+              <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200/80 dark:border-amber-900/60">
+                {topCategoryPercentage}% of total
+              </span>
+            )}
+          </div>
+          {topCategory ? (
+            <>
+              <div className="flex items-baseline space-x-2.5">
+                <span className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
+                  {formatMMK(topCategory.total)}
+                </span>
+              </div>
+              <div className="flex items-center space-x-2 mt-1.5">
+                <span
+                  className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                  style={{ backgroundColor: topCategory.color || '#f43f5e' }}
+                />
+                <span className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">
+                  {topCategory.name}
+                </span>
+                <span className="text-xs text-slate-400 dark:text-slate-500">
+                  ({topCategory.count} {topCategory.count === 1 ? 'transaction' : 'transactions'})
+                </span>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="text-2xl sm:text-3xl font-black text-slate-400 dark:text-slate-600 tracking-tight">
+                0 MMK
+              </div>
+              <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
+                No expense transactions logged yet
+              </p>
+            </>
+          )}
         </div>
       </div>
 

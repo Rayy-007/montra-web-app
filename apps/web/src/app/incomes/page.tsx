@@ -21,6 +21,7 @@ import { useFinance } from '../../context/FinancialContext';
 import { formatMMK, MONTHS } from '../../lib/utils';
 import { AddIncomeModal } from '../../components/AddIncomeModal';
 import { ProgressLoading } from '../../components/ProgressLoading';
+import { InfoTooltip } from '../../components/InfoTooltip';
 import api from '../../lib/api';
 
 export default function IncomesPage() {
@@ -190,14 +191,15 @@ export default function IncomesPage() {
         <div>
           <div className="flex items-center space-x-2 text-emerald-600 dark:text-emerald-400 text-xs font-semibold uppercase tracking-wider">
             <TrendingUp className="w-4 h-4" />
-            <span>Income Planner — Expected vs. Actual</span>
+            <span>Income Streams</span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
-            {currentMonthName} {year} — Income
+          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-slate-100 tracking-tight mt-0.5">
+            Incomes
           </h1>
-          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
-            Track planned earnings against actual deposits. Click any row to edit.
-          </p>
+          <div className="flex items-center space-x-1.5 text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-medium mt-1">
+            <span className="font-semibold text-slate-700 dark:text-slate-300">{currentMonthName} {year}</span>
+            <InfoTooltip content="Track planned revenue streams, salary, and side hustles with actual bank deposits." />
+          </div>
         </div>
 
         <div className="flex items-center space-x-2">
