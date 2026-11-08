@@ -27,13 +27,13 @@ import api from '../../lib/api';
 export default function IncomesPage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
-  const { 
-    month, 
-    year, 
-    accounts, 
-    refreshData, 
-    getCachedIncomes, 
-    setCachedIncomes 
+  const {
+    month,
+    year,
+    accounts,
+    refreshData,
+    getCachedIncomes,
+    setCachedIncomes
   } = useFinance();
 
   const [incomesData, setIncomesData] = useState<any>(() => {
@@ -202,14 +202,20 @@ export default function IncomesPage() {
           </div>
         </div>
 
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center space-x-2.5">
           <button
-            onClick={() => loadIncomes(true)}
+            onClick={() => {
+              loadIncomes(true);
+              refreshData();
+            }}
             disabled={isRefreshing || loading}
             title="Refresh income streams"
-            className="p-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-emerald-600 dark:hover:text-emerald-400 rounded-xl transition-all shadow-sm flex items-center justify-center disabled:opacity-50"
+            className="p-2.5 bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white font-semibold rounded-xl text-sm shadow-sm transition-all flex items-center space-x-1.5 disabled:opacity-50"
           >
             <RotateCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin text-emerald-600 dark:text-emerald-400' : ''}`} />
+            <span className="hidden sm:inline text-xs font-semibold">
+              {isRefreshing ? 'Refreshing...' : 'Refresh'}
+            </span>
           </button>
           <button
             onClick={() => setIsAddModalOpen(true)}

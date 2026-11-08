@@ -15,6 +15,7 @@ import {
   X, 
   Trash2, 
   RotateCw,
+  RotateCcw,
   Tag,
   Search,
   ArrowUp,
@@ -83,6 +84,13 @@ export default function BudgetsPage() {
   const [customColor, setCustomColor] = useState('#10B981');
   const [addLoading, setAddLoading] = useState(false);
 
+  // Reset & Remove Budget confirmation states
+  const [categoryToReset, setCategoryToReset] = useState<{ id: string; name: string } | null>(null);
+  const [isResettingItem, setIsResettingItem] = useState(false);
+  const [categoryToRemove, setCategoryToRemove] = useState<{ id: string; name: string } | null>(null);
+  const [isRemovingCategory, setIsRemovingCategory] = useState(false);
+  const [removeError, setRemoveError] = useState<string | null>(null);
+
   useEffect(() => {
     if (!authLoading && !user) {
       router.push('/login');
@@ -125,14 +133,34 @@ export default function BudgetsPage() {
     }
   }, [user, month, year]);
 
-  const handleDeleteBudgetItem = async (categoryId: string, categoryName: string) => {
-    if (!confirm(`Reset budget allocation for "${categoryName}" to 0?`)) return;
+  const handleConfirmReset = async () => {
+    if (!categoryToReset) return;
+    setIsResettingItem(true);
     try {
-      await api.delete(`/budgets/items/${categoryId}?month=${month}&year=${year}`);
+      await api.delete(`/budgets/items/${categoryToReset.id}?month=${month}&year=${year}`);
+      setCategoryToReset(null);
       await loadBudgets(true);
       refreshData();
-    } catch (err) {
-      console.error('Failed to remove budget item:', err);
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Failed to reset budget amount.');
+    } finally {
+      setIsResettingItem(false);
+    }
+  };
+
+  const handleConfirmRemoveCategory = async () => {
+    if (!categoryToRemove) return;
+    setIsRemovingCategory(true);
+    setRemoveError(null);
+    try {
+      await api.delete(`/categories/${categoryToRemove.id}`);
+      setCategoryToRemove(null);
+      await loadBudgets(true);
+      refreshData();
+    } catch (err: any) {
+      setRemoveError(err.response?.data?.message || 'Failed to remove budget category.');
+    } finally {
+      setIsRemovingCategory(false);
     }
   };
 
@@ -237,14 +265,20 @@ export default function BudgetsPage() {
           </div>
         </div>
 
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center space-x-2.5">
           <button
-            onClick={() => loadBudgets(true)}
+            onClick={() => {
+              loadBudgets(true);
+              refreshData();
+            }}
             disabled={isRefreshing || loading}
             title="Refresh budget allocations"
-            className="p-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-xl transition-all shadow-sm flex items-center justify-center disabled:opacity-50"
+            className="p-2.5 bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white font-semibold rounded-xl text-sm shadow-sm transition-all flex items-center space-x-1.5 disabled:opacity-50"
           >
             <RotateCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin text-indigo-600 dark:text-indigo-400' : ''}`} />
+            <span className="hidden sm:inline text-xs font-semibold">
+              {isRefreshing ? 'Refreshing...' : 'Refresh'}
+            </span>
           </button>
           <button
             onClick={() => {
@@ -528,7 +562,7 @@ export default function BudgetsPage() {
 
                         {/* Action Column */}
                         <td className="px-6 py-4 text-right">
-                          <div className="flex items-center justify-end space-x-2">
+                          <div className="flex items-center justify-end space-x-1.5">
                             <button
                               onClick={() => setEditingCategory(cat)}
                               className="px-2.5 py-1 text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:text-white hover:bg-indigo-600 dark:hover:bg-indigo-600 bg-indigo-50 dark:bg-indigo-950/60 rounded-lg transition-colors inline-flex items-center space-x-1"
@@ -539,13 +573,20 @@ export default function BudgetsPage() {
                             </button>
                             {cat.plannedAmount > 0 && (
                               <button
-                                onClick={() => handleDeleteBudgetItem(cat.categoryId, cat.categoryName)}
-                                title="Reset allocation to 0"
-                                className="p-1.5 text-slate-300 dark:text-slate-600 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg transition-colors"
+                                onClick={() => setCategoryToReset({ id: cat.categoryId, name: cat.categoryName })}
+                                title="Reset budget amount to 0"
+                                className="p-1.5 text-slate-400 hover:text-amber-600 dark:hover:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/40 rounded-lg transition-colors"
                               >
-                                <Trash2 className="w-3.5 h-3.5" />
+                                <RotateCcw className="w-3.5 h-3.5" />
                               </button>
                             )}
+                            <button
+                              onClick={() => setCategoryToRemove({ id: cat.categoryId, name: cat.categoryName })}
+                              title="Remove budget category"
+                              className="p-1.5 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg transition-colors"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
                           </div>
                         </td>
                       </tr>
@@ -621,7 +662,7 @@ export default function BudgetsPage() {
                     </div>
 
                     {/* Quick Actions */}
-                    <div className="flex items-center justify-end space-x-2 pt-1">
+                    <div className="flex items-center justify-end space-x-1.5 pt-1">
                       <button
                         onClick={() => setEditingCategory(cat)}
                         className="px-2.5 py-1 text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:text-white hover:bg-indigo-600 dark:hover:bg-indigo-600 bg-indigo-50 dark:bg-indigo-950/60 rounded-lg transition-colors inline-flex items-center space-x-1"
@@ -631,13 +672,20 @@ export default function BudgetsPage() {
                       </button>
                       {cat.plannedAmount > 0 && (
                         <button
-                          onClick={() => handleDeleteBudgetItem(cat.categoryId, cat.categoryName)}
-                          className="p-1.5 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 transition-colors"
-                          title="Reset allocation to 0"
+                          onClick={() => setCategoryToReset({ id: cat.categoryId, name: cat.categoryName })}
+                          className="p-1.5 text-slate-400 hover:text-amber-600 dark:hover:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/40 rounded-lg transition-colors"
+                          title="Reset budget amount to 0"
                         >
-                          <Trash2 className="w-3.5 h-3.5" />
+                          <RotateCcw className="w-3.5 h-3.5" />
                         </button>
                       )}
+                      <button
+                        onClick={() => setCategoryToRemove({ id: cat.categoryId, name: cat.categoryName })}
+                        className="p-1.5 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg transition-colors"
+                        title="Remove budget category"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
                     </div>
                   </div>
                 );
@@ -804,6 +852,127 @@ export default function BudgetsPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Reset Budget Amount Confirmation Modal */}
+      {categoryToReset && typeof document !== 'undefined' && createPortal(
+        <div
+          className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 dark:bg-slate-950/80 backdrop-blur-sm"
+          onClick={(e) => {
+            if (e.target === e.currentTarget && !isResettingItem) setCategoryToReset(null);
+          }}
+        >
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-100 dark:border-slate-800 w-full max-w-md max-h-[92vh] overflow-y-auto animate-modal-slide">
+            <div className="p-6">
+              <div className="w-12 h-12 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-100 dark:border-amber-900/50 flex items-center justify-center text-amber-500 dark:text-amber-400 mb-4 mx-auto">
+                <RotateCcw className="w-6 h-6" />
+              </div>
+
+              <div className="text-center mb-6">
+                <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100 mb-1">Reset Budget Amount</h3>
+                <p className="text-sm text-slate-600 dark:text-slate-400">
+                  Reset planned budget for <span className="font-semibold text-slate-900 dark:text-slate-100">"{categoryToReset.name}"</span> to <span className="font-bold text-amber-600 dark:text-amber-400">0 MMK</span> for <span className="font-semibold text-indigo-600 dark:text-indigo-400">{currentMonthName} {year}</span>?
+                </p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 bg-slate-50 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-800 rounded-xl p-2.5 text-left">
+                  💡 This resets only the budget target amount to 0 for {currentMonthName} {year}. The category and past expense history remain safely preserved.
+                </p>
+              </div>
+
+              <div className="flex items-center space-x-3">
+                <button
+                  type="button"
+                  disabled={isResettingItem}
+                  onClick={() => setCategoryToReset(null)}
+                  className="flex-1 py-2.5 px-4 text-sm font-semibold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl transition-colors disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={isResettingItem}
+                  onClick={handleConfirmReset}
+                  className="flex-1 py-2.5 px-4 text-sm font-semibold text-white bg-amber-600 hover:bg-amber-700 rounded-xl shadow-md shadow-amber-600/20 transition-all disabled:opacity-50 flex items-center justify-center space-x-2"
+                >
+                  {isResettingItem ? (
+                    <span>Resetting...</span>
+                  ) : (
+                    <>
+                      <RotateCcw className="w-4 h-4" />
+                      <span>Reset to 0</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Remove Budget Category Confirmation Modal */}
+      {categoryToRemove && typeof document !== 'undefined' && createPortal(
+        <div
+          className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 dark:bg-slate-950/80 backdrop-blur-sm"
+          onClick={(e) => {
+            if (e.target === e.currentTarget && !isRemovingCategory) setCategoryToRemove(null);
+          }}
+        >
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-100 dark:border-slate-800 w-full max-w-md max-h-[92vh] overflow-y-auto animate-modal-slide">
+            <div className="p-6">
+              <div className="w-12 h-12 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-100 dark:border-rose-900/50 flex items-center justify-center text-rose-500 dark:text-rose-400 mb-4 mx-auto">
+                <Trash2 className="w-6 h-6" />
+              </div>
+
+              <div className="text-center mb-6">
+                <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100 mb-1">Remove Budget Category</h3>
+                <p className="text-sm text-slate-600 dark:text-slate-400">
+                  Are you sure you want to remove <span className="font-semibold text-slate-900 dark:text-slate-100">"{categoryToRemove.name}"</span> from your budget?
+                </p>
+                <div className="mt-3 text-xs text-rose-600 dark:text-rose-400 bg-rose-50/80 dark:bg-rose-950/30 border border-rose-100 dark:border-rose-900/50 rounded-xl p-3 text-left space-y-1">
+                  <div className="font-bold flex items-center space-x-1.5 text-rose-700 dark:text-rose-300">
+                    <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+                    <span>Permanent Action</span>
+                  </div>
+                  <p className="text-rose-600 dark:text-rose-400 leading-relaxed pl-5">
+                    This will remove the category and its budget limit. Past expense records linked to this category will remain preserved.
+                  </p>
+                </div>
+                {removeError && (
+                  <p className="text-xs text-rose-600 dark:text-rose-400 font-semibold mt-2.5 bg-rose-50 dark:bg-rose-950/40 p-2 rounded-lg">
+                    {removeError}
+                  </p>
+                )}
+              </div>
+
+              <div className="flex items-center space-x-3">
+                <button
+                  type="button"
+                  disabled={isRemovingCategory}
+                  onClick={() => setCategoryToRemove(null)}
+                  className="flex-1 py-2.5 px-4 text-sm font-semibold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl transition-colors disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={isRemovingCategory}
+                  onClick={handleConfirmRemoveCategory}
+                  className="flex-1 py-2.5 px-4 text-sm font-semibold text-white bg-rose-600 hover:bg-rose-700 rounded-xl shadow-md shadow-rose-600/20 transition-all disabled:opacity-50 flex items-center justify-center space-x-2"
+                >
+                  {isRemovingCategory ? (
+                    <span>Removing...</span>
+                  ) : (
+                    <>
+                      <Trash2 className="w-4 h-4" />
+                      <span>Remove Budget</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
           </div>
         </div>,
         document.body

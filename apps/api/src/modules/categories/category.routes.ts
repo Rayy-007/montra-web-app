@@ -92,13 +92,23 @@ router.delete('/:id', async (req: AuthRequest, res: Response) => {
     const userId = req.user!.id;
     const { id } = req.params;
 
-    const deleted = await prisma.category.deleteMany({
+    const category = await prisma.category.findFirst({
       where: { id, userId }
     });
 
-    if (deleted.count === 0) {
+    if (!category) {
       return res.status(404).json({ message: 'Category not found' });
     }
+
+    // Safely delete associated budget items and nullify transaction references in a transaction
+    await prisma.$transaction([
+      prisma.budgetItem.deleteMany({ where: { categoryId: id } }),
+      prisma.transaction.updateMany({
+        where: { categoryId: id },
+        data: { categoryId: null }
+      }),
+      prisma.category.delete({ where: { id } })
+    ]);
 
     res.json({ message: 'Category deleted successfully' });
   } catch (error: any) {
