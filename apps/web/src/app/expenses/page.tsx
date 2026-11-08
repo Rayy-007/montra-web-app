@@ -2,14 +2,14 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { 
-  Receipt, 
-  Plus, 
-  Trash2, 
-  Search, 
-  Filter, 
-  ArrowDownRight, 
-  Wallet, 
+import {
+  Receipt,
+  Plus,
+  Trash2,
+  Search,
+  Filter,
+  ArrowDownRight,
+  Wallet,
   RotateCw,
   Edit2,
   Tag,
@@ -33,14 +33,14 @@ import api from '../../lib/api';
 export default function ExpensesPage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
-  const { 
-    month, 
-    year, 
-    accounts, 
-    categories, 
-    refreshData, 
-    getCachedExpenses, 
-    setCachedExpenses 
+  const {
+    month,
+    year,
+    accounts,
+    categories,
+    refreshData,
+    getCachedExpenses,
+    setCachedExpenses
   } = useFinance();
 
   const [transactions, setTransactions] = useState<any[]>(() => {
@@ -102,7 +102,7 @@ export default function ExpensesPage() {
 
   const handleDelete = async (id: string) => {
     if (!confirm('Are you sure you want to delete this expense? This will refund the wallet balance.')) return;
-    
+
     // Optimistic UI update
     const previous = [...transactions];
     const updated = transactions.filter(tx => tx.id !== id);
@@ -246,7 +246,7 @@ export default function ExpensesPage() {
       {/* Summary KPI Cards: Total Expense & Most Total Expense Amount Category */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {/* Total Expense Card */}
-        <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm relative overflow-hidden transition-all hover:shadow-md">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm relative overflow-hidden transition-all">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center space-x-2 text-rose-600 dark:text-rose-400 text-xs font-semibold uppercase tracking-wider">
               <TrendingDown className="w-4 h-4" />
@@ -269,7 +269,7 @@ export default function ExpensesPage() {
         </div>
 
         {/* Most Total Expense Amount Category Card */}
-        <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm relative overflow-hidden transition-all hover:shadow-md">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm relative overflow-hidden transition-all">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center space-x-2 text-amber-600 dark:text-amber-400 text-xs font-semibold uppercase tracking-wider">
               <Flame className="w-4 h-4" />
