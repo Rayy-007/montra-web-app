@@ -5,7 +5,6 @@ import { createPortal } from 'react-dom';
 import {
   X,
   ArrowLeftRight,
-  ArrowRight,
   Banknote,
   Users,
   ShieldAlert,
@@ -213,10 +212,10 @@ export const TransferModal: React.FC<TransferModalProps> = ({
                       setFromAccountId(toAccountId);
                       setToAccountId(prevFrom);
                     }}
-                    title="Swap wallets"
-                    className="hidden sm:flex items-center justify-center w-9 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-sky-100 dark:hover:bg-sky-900/50 text-slate-500 hover:text-sky-600 transition-colors"
+                    title="Swap From & To wallets"
+                    className="flex items-center justify-center w-full sm:w-9 h-9 sm:h-10 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-sky-100 dark:hover:bg-sky-900/50 text-slate-500 hover:text-sky-600 transition-colors"
                   >
-                    <ArrowRight className="w-4 h-4" />
+                    <ArrowLeftRight className="w-4 h-4" />
                   </button>
 
                   <div>

@@ -26,6 +26,7 @@ import { AddExpenseModal } from '../../components/AddExpenseModal';
 import { AddIncomeModal } from '../../components/AddIncomeModal';
 import { TransferModal } from '../../components/TransferModal';
 import { MonthlySummaryModal } from '../../components/MonthlySummaryModal';
+import { CategoryIcon } from '../../components/CategoryIcon';
 import { ProgressLoading } from '../../components/ProgressLoading';
 import { InfoTooltip } from '../../components/InfoTooltip';
 import api from '../../lib/api';
@@ -412,17 +413,28 @@ export default function DashboardPage() {
                 return (
                   <div key={tx.id} className="py-3 flex items-center justify-between">
                     <div className="flex items-center space-x-3">
-                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-sm font-bold ${
-                        isTransfer
-                          ? 'bg-sky-50 dark:bg-sky-950/60 text-sky-600 dark:text-sky-400'
-                          : isIncome
-                          ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400'
-                          : 'bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400'
-                      }`}>
+                      <div
+                        className={`w-9 h-9 rounded-xl flex items-center justify-center text-sm font-bold ${
+                          isTransfer
+                            ? 'bg-sky-50 dark:bg-sky-950/60 text-sky-600 dark:text-sky-400'
+                            : isIncome
+                            ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400'
+                            : tx.category?.color
+                            ? ''
+                            : 'bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400'
+                        }`}
+                        style={
+                          !isTransfer && !isIncome && tx.category?.color
+                            ? { backgroundColor: `${tx.category.color}1A`, color: tx.category.color }
+                            : undefined
+                        }
+                      >
                         {isTransfer ? (
                           <ArrowLeftRight className="w-4 h-4" />
                         ) : isIncome ? (
                           <ArrowUpRight className="w-4 h-4" />
+                        ) : tx.category?.icon ? (
+                          <CategoryIcon icon={tx.category.icon} color={tx.category.color} className="w-4 h-4" />
                         ) : (
                           <ArrowDownRight className="w-4 h-4" />
                         )}

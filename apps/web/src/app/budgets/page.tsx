@@ -30,6 +30,7 @@ import { formatMMK, formatNumber, MONTHS } from '../../lib/utils';
 import { ProgressLoading } from '../../components/ProgressLoading';
 import { SetBudgetModal, BudgetCategoryItem } from '../../components/SetBudgetModal';
 import { InfoTooltip } from '../../components/InfoTooltip';
+import { CategoryBadge, CategoryIcon, CATEGORY_ICON_PRESETS } from '../../components/CategoryIcon';
 import api from '../../lib/api';
 
 const PRESET_COLORS = [
@@ -85,6 +86,7 @@ export default function BudgetsPage() {
   const [customCategoryName, setCustomCategoryName] = useState('');
   const [customPlannedAmount, setCustomPlannedAmount] = useState('');
   const [customColor, setCustomColor] = useState('#10B981');
+  const [customIcon, setCustomIcon] = useState('Tag');
   const [addLoading, setAddLoading] = useState(false);
 
   // Reset & Remove Budget confirmation states
@@ -213,7 +215,7 @@ export default function BudgetsPage() {
           year,
           categoryName: customCategoryName.trim(),
           color: customColor,
-          icon: 'Tag',
+          icon: customIcon,
           plannedAmount: planned
         });
       } else {
@@ -535,13 +537,11 @@ export default function BudgetsPage() {
                       <tr key={cat.categoryId} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/50 transition-colors">
                         {/* Category Name */}
                         <td className="px-6 py-4">
-                          <div className="font-bold text-slate-900 dark:text-slate-100 flex items-center space-x-2">
-                            <span
-                              className="w-2.5 h-2.5 rounded-full"
-                              style={{ backgroundColor: cat.color || '#10b981' }}
-                            ></span>
-                            <span>{cat.categoryName}</span>
-                          </div>
+                          <CategoryBadge
+                            name={cat.categoryName}
+                            icon={cat.icon}
+                            color={cat.color}
+                          />
                         </td>
 
                         {/* Planned Amount (Click to open modal) */}
@@ -643,13 +643,12 @@ export default function BudgetsPage() {
                 return (
                   <div key={cat.categoryId} className="p-4 space-y-3">
                     <div className="flex items-center justify-between">
-                      <div className="font-bold text-slate-900 dark:text-slate-100 flex items-center space-x-2">
-                        <span
-                          className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-                          style={{ backgroundColor: cat.color || '#10b981' }}
-                        ></span>
-                        <span className="text-sm">{cat.categoryName}</span>
-                      </div>
+                      <CategoryBadge
+                        name={cat.categoryName}
+                        icon={cat.icon}
+                        color={cat.color}
+                        size="xs"
+                      />
                       <span className={`text-[11px] font-bold px-2 py-0.5 rounded-md ${
                         cat.diff >= 0 ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400' : 'bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-400'
                       }`}>
@@ -819,7 +818,7 @@ export default function BudgetsPage() {
                     <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
                       Category Tag Color
                     </label>
-                    <div className="flex items-center space-x-2">
+                    <div className="flex items-center flex-wrap gap-2">
                       {PRESET_COLORS.map((col) => (
                         <button
                           key={col}
@@ -831,6 +830,36 @@ export default function BudgetsPage() {
                           style={{ backgroundColor: col }}
                         />
                       ))}
+                    </div>
+                  </div>
+
+                  {/* Preset Icon Picker */}
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
+                      Category Icon
+                    </label>
+                    <div className="grid grid-cols-5 gap-1.5">
+                      {CATEGORY_ICON_PRESETS.map((preset) => {
+                        const selected = customIcon === preset.id;
+                        return (
+                          <button
+                            key={preset.id}
+                            type="button"
+                            onClick={() => setCustomIcon(preset.id)}
+                            title={preset.label}
+                            className={`p-2 rounded-xl border flex flex-col items-center justify-center space-y-1 transition-all ${
+                              selected
+                                ? 'bg-indigo-50 dark:bg-indigo-950/60 border-indigo-500 ring-1 ring-indigo-500/40'
+                                : 'bg-slate-50 dark:bg-slate-800/70 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800'
+                            }`}
+                          >
+                            <CategoryIcon icon={preset.id} color={selected ? customColor : undefined} className="w-4 h-4" />
+                            <span className="text-[10px] font-medium text-slate-600 dark:text-slate-300 truncate max-w-full">
+                              {preset.label}
+                            </span>
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
                 </>

@@ -27,6 +27,7 @@ import { formatMMK, MONTHS, formatDateTime } from '../../lib/utils';
 import { AddExpenseModal } from '../../components/AddExpenseModal';
 import { EditExpenseModal } from '../../components/EditExpenseModal';
 import { ConfirmDeleteModal } from '../../components/ConfirmDeleteModal';
+import { CategoryBadge } from '../../components/CategoryIcon';
 import { ProgressLoading } from '../../components/ProgressLoading';
 import { InfoTooltip } from '../../components/InfoTooltip';
 import api from '../../lib/api';
@@ -517,9 +518,11 @@ export default function ExpensesPage() {
                         {formatDateTime(tx.date)}
                       </td>
                       <td className="px-6 py-4">
-                        <span className="inline-flex items-center text-xs font-semibold px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200">
-                          {tx.category?.name || 'General Expense'}
-                        </span>
+                        <CategoryBadge
+                          name={tx.category?.name || 'General Expense'}
+                          icon={tx.category?.icon}
+                          color={tx.category?.color}
+                        />
                       </td>
                       <td className="px-6 py-4">
                         <span className="inline-flex items-center space-x-1.5 text-xs font-bold text-slate-700 dark:text-slate-300">
@@ -566,9 +569,12 @@ export default function ExpensesPage() {
                 <div key={tx.id} className="p-4 flex items-center justify-between gap-3">
                   <div className="space-y-1 min-w-0">
                     <div className="flex items-center space-x-2 flex-wrap gap-y-1">
-                      <span className="inline-flex items-center text-xs font-semibold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200">
-                        {tx.category?.name || 'General Expense'}
-                      </span>
+                      <CategoryBadge
+                        name={tx.category?.name || 'General Expense'}
+                        icon={tx.category?.icon}
+                        color={tx.category?.color}
+                        size="xs"
+                      />
                       <span className="inline-flex items-center space-x-1 text-[11px] font-medium text-slate-500 dark:text-slate-400">
                         <Wallet className="w-3 h-3 text-slate-400" />
                         <span>{tx.account?.name}</span>
