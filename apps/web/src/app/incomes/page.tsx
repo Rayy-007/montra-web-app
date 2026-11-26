@@ -495,13 +495,21 @@ export default function IncomesPage() {
               </div>
               <div>
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">Expected Amount (MMK)</label>
-                <input
-                  type="number"
-                  value={editExpectedAmount}
-                  onChange={(e) => setEditExpectedAmount(e.target.value)}
-                  required min={1}
-                  className="w-full text-xl font-bold px-4 py-2.5 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none text-slate-900 dark:text-slate-100"
-                />
+                <div className="relative">
+                  <input
+                    type="number"
+                    value={editExpectedAmount}
+                    onChange={(e) => setEditExpectedAmount(e.target.value)}
+                    required min={1}
+                    className="w-full text-xl font-bold px-4 py-2.5 pr-14 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none text-slate-900 dark:text-slate-100"
+                  />
+                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 dark:text-slate-500">Kyat</span>
+                </div>
+                {editExpectedAmount && Number(editExpectedAmount) > 0 && (
+                  <p className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 mt-1 pl-1">
+                    {formatMMK(Number(editExpectedAmount))}
+                  </p>
+                )}
               </div>
               <div>
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">Expected Date</label>

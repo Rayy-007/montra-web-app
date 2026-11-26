@@ -26,11 +26,11 @@ interface TransferModalProps {
 }
 
 const TRANSFER_TAGS = [
-  { id: 'TOP_UP', label: 'Wallet Top-Up', icon: ArrowLeftRight, desc: 'Move funds between digital wallets' },
-  { id: 'CASH_WITHDRAWAL', label: 'Cash Withdrawal', icon: Banknote, desc: 'Take out cash from KPay or Bank' },
-  { id: 'FAMILY_EXCHANGE', label: 'Family Exchange', icon: Users, desc: 'Gave KPay/KBZ, kept cash back' },
-  { id: 'RESERVE_DRAW', label: 'Budget Overflow Draw', icon: ShieldAlert, desc: 'Pulled extra from Bank reserve' },
-  { id: 'SAVINGS_CONTRIBUTION', label: 'Move to Savings', icon: PiggyBank, desc: 'Transfer into savings wallet' },
+  { id: 'TOP_UP', label: 'Top Up Wallet', icon: ArrowLeftRight, desc: 'Move money between wallets' },
+  { id: 'CASH_WITHDRAWAL', label: 'Get Cash', icon: Banknote, desc: 'Take cash out from KPay or Bank' },
+  { id: 'FAMILY_EXCHANGE', label: 'Family Swap', icon: Users, desc: 'Gave KPay/KBZ, got cash back' },
+  { id: 'RESERVE_DRAW', label: 'Extra Bank Top-Up', icon: ShieldAlert, desc: 'Took extra money from Main Bank' },
+  { id: 'SAVINGS_CONTRIBUTION', label: 'Put Into Savings', icon: PiggyBank, desc: 'Move money to savings wallet' },
 ];
 
 export const TransferModal: React.FC<TransferModalProps> = ({
@@ -64,7 +64,6 @@ export const TransferModal: React.FC<TransferModalProps> = ({
     setDate(new Date().toISOString().split('T')[0]);
   }, [isOpen, accounts, defaultFromId, defaultToId]);
 
-  // Auto-suggest tag when user chooses Reserve -> Daily Spending or -> Cash
   useEffect(() => {
     const fromAcc = accounts.find((a) => a.id === fromAccountId);
     const toAcc = accounts.find((a) => a.id === toAccountId);
@@ -88,7 +87,7 @@ export const TransferModal: React.FC<TransferModalProps> = ({
   const fromAccount = accounts.find((a) => a.id === fromAccountId);
   const toAccount = accounts.find((a) => a.id === toAccountId);
   const parsedAmount = parseFloat(amount.replace(/,/g, '')) || 0;
-  const isReserveDraw =
+  const isBankTopUp =
     transferTag === 'RESERVE_DRAW' ||
     (fromAccount?.role === 'RESERVE' && toAccount?.role === 'DAILY_SPENDING');
 
@@ -97,15 +96,15 @@ export const TransferModal: React.FC<TransferModalProps> = ({
     setError('');
 
     if (!fromAccountId || !toAccountId) {
-      setError('Please select both source and destination wallets.');
+      setError('Please select both From and To wallets.');
       return;
     }
     if (fromAccountId === toAccountId) {
-      setError('Source and destination wallets must be different.');
+      setError('From and To wallets must be different.');
       return;
     }
     if (parsedAmount <= 0) {
-      setError('Please enter a valid positive amount.');
+      setError('Please enter an amount greater than 0.');
       return;
     }
 
@@ -128,7 +127,7 @@ export const TransferModal: React.FC<TransferModalProps> = ({
       if (onSuccess) onSuccess();
       onClose();
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to record transfer.');
+      setError(err.response?.data?.message || 'Failed to save transfer.');
     } finally {
       setLoading(false);
     }
@@ -152,10 +151,10 @@ export const TransferModal: React.FC<TransferModalProps> = ({
                 </div>
                 <div>
                   <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">
-                    Transfer Between Wallets
+                    Move Money Between Wallets
                   </h3>
                   <p className="text-xs text-slate-500 dark:text-slate-400">
-                    Rebalance Cash, KPay, KBZ Bank, or AYA Bank
+                    Cash, KPay, KBZ Bank, or AYA Bank
                   </p>
                 </div>
               </div>
@@ -171,7 +170,7 @@ export const TransferModal: React.FC<TransferModalProps> = ({
             {accounts.length < 2 ? (
               <div className="p-6 text-center space-y-3">
                 <p className="text-sm text-slate-600 dark:text-slate-300">
-                  You need at least 2 wallets (e.g. KPay and Cash) to record a transfer.
+                  You need at least 2 wallets (for example KPay and Cash) to move money between them.
                 </p>
                 <button
                   onClick={onClose}
@@ -214,7 +213,7 @@ export const TransferModal: React.FC<TransferModalProps> = ({
                       setFromAccountId(toAccountId);
                       setToAccountId(prevFrom);
                     }}
-                    title="Swap source and destination wallets"
+                    title="Swap wallets"
                     className="hidden sm:flex items-center justify-center w-9 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-sky-100 dark:hover:bg-sky-900/50 text-slate-500 hover:text-sky-600 transition-colors"
                   >
                     <ArrowRight className="w-4 h-4" />
@@ -238,28 +237,40 @@ export const TransferModal: React.FC<TransferModalProps> = ({
                   </div>
                 </div>
 
-                {/* Amount */}
+                {/* Amount with live comma preview */}
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
                     Amount (MMK)
                   </label>
-                  <input
-                    type="number"
-                    placeholder="0"
-                    value={amount}
-                    onChange={(e) => setAmount(e.target.value)}
-                    required
-                    min="1"
-                    className="w-full text-2xl font-black px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-sky-500 focus:outline-none"
-                  />
-                  {parsedAmount > 0 && fromAccount && toAccount && (
-                    <div className="mt-1.5 flex flex-wrap items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 px-0.5">
-                      <span>
-                        {fromAccount.name}: {formatMMK(fromAccount.balance - parsedAmount)}
-                      </span>
-                      <span>
-                        {toAccount.name}: {formatMMK(toAccount.balance + parsedAmount)}
-                      </span>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      placeholder="0"
+                      value={amount}
+                      onChange={(e) => setAmount(e.target.value)}
+                      required
+                      min="1"
+                      className="w-full text-2xl font-black px-3.5 py-2.5 pr-14 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-sky-500 focus:outline-none"
+                    />
+                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 dark:text-slate-500">
+                      Kyat
+                    </span>
+                  </div>
+                  {parsedAmount > 0 && (
+                    <div className="mt-1.5 space-y-1 px-0.5">
+                      <p className="text-xs font-bold text-sky-600 dark:text-sky-400">
+                        {formatMMK(parsedAmount)}
+                      </p>
+                      {fromAccount && toAccount && (
+                        <div className="flex flex-wrap items-center justify-between text-[11px] text-slate-500 dark:text-slate-400">
+                          <span>
+                            {fromAccount.name} after: {formatMMK(fromAccount.balance - parsedAmount)}
+                          </span>
+                          <span>
+                            {toAccount.name} after: {formatMMK(toAccount.balance + parsedAmount)}
+                          </span>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -267,7 +278,7 @@ export const TransferModal: React.FC<TransferModalProps> = ({
                 {/* Purpose / Quick Tags */}
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
-                    Transfer Reason / Tag
+                    Why Are You Moving This?
                   </label>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                     {TRANSFER_TAGS.map((tag) => {
@@ -292,11 +303,11 @@ export const TransferModal: React.FC<TransferModalProps> = ({
                   </div>
                 </div>
 
-                {isReserveDraw && (
+                {isBankTopUp && (
                   <div className="p-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 rounded-xl text-xs text-amber-800 dark:text-amber-300 flex items-start space-x-2">
                     <ShieldAlert className="w-4 h-4 flex-shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
                     <span>
-                      <strong>Reserve Draw Alert:</strong> This moves money from your Reserve ({fromAccount?.name}) into Daily Spending ({toAccount?.name}). Your Dashboard &amp; Budgets will track this draw so you always know how much extra reserve was pulled.
+                      <strong>Bank Top-Up Notice:</strong> Moving money from Main Bank ({fromAccount?.name}) to Daily Use ({toAccount?.name}). Dashboard and Budgets will show this extra money taken from bank so you stay on track.
                     </span>
                   </div>
                 )}
@@ -329,10 +340,10 @@ export const TransferModal: React.FC<TransferModalProps> = ({
                   </div>
                 </div>
 
-                {/* Accounting assurance note */}
+                {/* Simple accounting note */}
                 <div className="flex items-center space-x-2 text-[11px] text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/60 px-3 py-2 rounded-xl border border-slate-200/70 dark:border-slate-700/60">
                   <Info className="w-3.5 h-3.5 text-sky-500 flex-shrink-0" />
-                  <span>Transfers update wallet balances only—they are excluded from Expenses, Income &amp; Budgets.</span>
+                  <span>This only moves money between your wallets. It is NOT counted as an Expense or Income.</span>
                 </div>
 
                 <div className="flex items-center space-x-3 pt-1">
@@ -350,11 +361,11 @@ export const TransferModal: React.FC<TransferModalProps> = ({
                     className="flex-1 py-2.5 px-4 text-sm font-semibold text-white bg-sky-600 hover:bg-sky-700 rounded-xl shadow-md shadow-sky-600/20 transition-all disabled:opacity-50 flex items-center justify-center space-x-2"
                   >
                     {loading ? (
-                      <span>Recording...</span>
+                      <span>Saving...</span>
                     ) : (
                       <>
                         <Check className="w-4 h-4" />
-                        <span>Confirm Transfer</span>
+                        <span>Save Transfer</span>
                       </>
                     )}
                   </button>

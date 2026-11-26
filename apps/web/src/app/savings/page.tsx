@@ -152,7 +152,7 @@ export default function SavingsPage() {
   const handleDeleteGoal = async (goal: any) => {
     if (
       !confirm(
-        `Remove "${goal.name}" goal? Your wallet balances (AYA Bank, Cash, etc.) will NOT be changed.`
+        `Remove "${goal.name}" goal? Your wallet money (AYA Bank, Cash, etc.) will NOT be deleted.`
       )
     ) {
       return;
@@ -174,7 +174,6 @@ export default function SavingsPage() {
     setAllocNote('');
     setAllocDate(new Date().toISOString().split('T')[0]);
 
-    // Sensible defaults: move from Daily/Reserve -> Savings Holding or Cash
     const savingsWallet =
       accounts.find((a) => a.role === 'SAVINGS_HOLDING' || a.type === 'SAVINGS') ||
       accounts.find((a) => a.name.toLowerCase().includes('aya')) ||
@@ -210,7 +209,7 @@ export default function SavingsPage() {
     const effectiveMode = allocDirection === 'WITHDRAW' ? 'EARMARK' : allocMode;
 
     if (effectiveMode === 'TRANSFER_AND_SAVE' && (!fromAccountId || fromAccountId === toAccountId)) {
-      setAllocError('Please choose two different wallets (From Wallet → Holding Wallet).');
+      setAllocError('Please choose two different wallets (From Wallet → Save In Wallet).');
       return;
     }
 
@@ -236,12 +235,12 @@ export default function SavingsPage() {
   };
 
   const handleDeleteAllocation = async (id: string) => {
-    if (!confirm('Remove this savings log entry?')) return;
+    if (!confirm('Remove this savings record?')) return;
     try {
       await api.delete(`/savings/allocations/${id}`);
       await Promise.all([loadSavings(true), refreshData()]);
     } catch (err) {
-      console.error('Failed to delete allocation:', err);
+      console.error('Failed to delete record:', err);
     }
   };
 
@@ -258,7 +257,7 @@ export default function SavingsPage() {
   if (authLoading || !user) {
     return (
       <div className="min-h-[70vh] flex items-center justify-center">
-        <ProgressLoading message="Authenticating session..." theme="emerald" />
+        <ProgressLoading message="Loading your account..." theme="emerald" />
       </div>
     );
   }
@@ -274,6 +273,9 @@ export default function SavingsPage() {
     goalCount: 0,
   };
 
+  const parsedTargetNumber = parseFloat(goalTarget.replace(/,/g, '')) || 0;
+  const parsedAllocNumber = parseFloat(allocAmount.replace(/,/g, '')) || 0;
+
   return (
     <div className="space-y-8 animate-fade-in">
       {/* Header */}
@@ -281,7 +283,7 @@ export default function SavingsPage() {
         <div>
           <div className="flex items-center space-x-2 text-emerald-600 dark:text-emerald-400 text-xs font-semibold uppercase tracking-wider">
             <PiggyBank className="w-4 h-4" />
-            <span>Pay Yourself First</span>
+            <span>Personal Savings</span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-slate-100 tracking-tight mt-0.5">
             Savings Goals
@@ -290,7 +292,7 @@ export default function SavingsPage() {
             <span className="font-semibold text-slate-700 dark:text-slate-300">
               {monthLabel} {year}
             </span>
-            <InfoTooltip content="Earmark money held in AYA Bank, Wardrobe Cash, or any wallet toward goals like Laptop or General Savings — completely excluded from Expenses." />
+            <InfoTooltip content="Save money for goals like Laptop or General Savings inside AYA Bank or Cash—never counted as Expenses." />
           </div>
         </div>
 
@@ -315,13 +317,13 @@ export default function SavingsPage() {
         </div>
       </div>
 
-      {/* Coaching Callout */}
+      {/* Simple Callout */}
       <div className="bg-emerald-50/80 dark:bg-emerald-950/30 border border-emerald-200/80 dark:border-emerald-800/60 rounded-2xl p-4 flex items-start space-x-3 text-xs sm:text-sm text-emerald-900 dark:text-emerald-200">
         <Info className="w-5 h-5 text-emerald-600 dark:text-emerald-400 flex-shrink-0 mt-0.5" />
         <div>
-          <span className="font-bold">100% Separate from Expenses:</span> Saving money for your{' '}
-          <strong>Laptop</strong> or <strong>General Savings</strong> inside <strong>AYA Bank</strong> or{' '}
-          <strong>Cash</strong> never inflates your monthly Expenses or Expense Budgets.
+          <span className="font-bold">Not Counted as Expense:</span> Money you save for your{' '}
+          <strong>Laptop</strong> or <strong>General Savings</strong> in <strong>AYA Bank</strong> or{' '}
+          <strong>Cash</strong> will never increase your monthly Expenses or Budgets.
         </div>
       </div>
 
@@ -329,7 +331,7 @@ export default function SavingsPage() {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm">
           <div className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
-            Total Saved Across Goals
+            Total Saved
           </div>
           <div className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1">
             {formatMMK(summary.totalSavedAllGoals)}
@@ -338,7 +340,7 @@ export default function SavingsPage() {
 
         <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm">
           <div className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
-            Saved in {monthLabel} {year}
+            Added in {monthLabel} {year}
           </div>
           <div className="text-2xl font-black text-sky-600 dark:text-sky-400 mt-1">
             +{formatMMK(summary.savedSelectedMonth)}
@@ -347,7 +349,7 @@ export default function SavingsPage() {
 
         <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm">
           <div className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
-            Where Savings Sit
+            Stored In Wallets
           </div>
           {walletHoldings.length > 0 ? (
             <div className="mt-1.5 flex flex-wrap gap-1.5">
@@ -365,7 +367,7 @@ export default function SavingsPage() {
             </div>
           ) : (
             <div className="text-sm font-medium text-slate-400 mt-1.5">
-              No wallet funds earmarked yet
+              No wallet money saved yet
             </div>
           )}
         </div>
@@ -386,7 +388,7 @@ export default function SavingsPage() {
               Create your first Savings Goal
             </h3>
             <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
-              Start a <strong>Laptop Fund</strong> or <strong>General Savings</strong> pot and track every MMK held in your AYA Bank or Wardrobe Cash.
+              Start a <strong>Laptop Fund</strong> or <strong>General Savings</strong> goal and track how much sits in AYA Bank and Cash.
             </p>
           </div>
           <button
@@ -412,11 +414,9 @@ export default function SavingsPage() {
                 className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm hover:shadow-md transition-all flex flex-col justify-between overflow-hidden"
               >
                 <div>
-                  {/* Top Accent Strip */}
                   <div className="h-2 w-full" style={{ backgroundColor: goal.color || '#10B981' }} />
 
                   <div className="p-6 space-y-4">
-                    {/* Title & Actions */}
                     <div className="flex items-start justify-between">
                       <div className="flex items-center space-x-3">
                         <div
@@ -431,11 +431,11 @@ export default function SavingsPage() {
                           </h3>
                           {goal.targetAmount ? (
                             <p className="text-xs text-slate-500 dark:text-slate-400">
-                              Target: {formatMMK(goal.targetAmount)}
+                              Goal: {formatMMK(goal.targetAmount)}
                             </p>
                           ) : (
                             <p className="text-xs text-slate-500 dark:text-slate-400">
-                              Open-ended savings pot
+                              No fixed target
                             </p>
                           )}
                         </div>
@@ -459,7 +459,6 @@ export default function SavingsPage() {
                       </div>
                     </div>
 
-                    {/* Saved Amount & Progress */}
                     <div>
                       <div className="flex items-baseline justify-between">
                         <span className="text-2xl font-black text-slate-900 dark:text-slate-100">
@@ -485,18 +484,17 @@ export default function SavingsPage() {
                           </div>
                           {remaining !== null && (
                             <div className="text-[11px] text-slate-500 dark:text-slate-400 text-right">
-                              {remaining === 0 ? 'Goal reached!' : `${formatMMK(remaining)} to go`}
+                              {remaining === 0 ? 'Goal reached!' : `${formatMMK(remaining)} left`}
                             </div>
                           )}
                         </div>
                       )}
                     </div>
 
-                    {/* Where This Money Is Held */}
                     <div className="bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 rounded-xl p-3 space-y-2">
                       <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center space-x-1.5">
                         <Wallet className="w-3.5 h-3.5" />
-                        <span>Held In Wallets</span>
+                        <span>Saved Inside</span>
                       </div>
                       {goal.walletBreakdown && goal.walletBreakdown.length > 0 ? (
                         <div className="space-y-1.5">
@@ -519,29 +517,28 @@ export default function SavingsPage() {
                           })}
                         </div>
                       ) : (
-                        <p className="text-xs text-slate-400">Not funded yet</p>
+                        <p className="text-xs text-slate-400">No money added yet</p>
                       )}
                     </div>
                   </div>
                 </div>
 
-                {/* Card Actions */}
                 <div className="px-6 pb-5 flex items-center space-x-2">
                   <button
                     onClick={() => openAllocateModal(goal, 'ADD')}
                     className="flex-1 py-2 px-3 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl text-xs shadow-sm transition-colors flex items-center justify-center space-x-1.5"
                   >
                     <PlusCircle className="w-3.5 h-3.5" />
-                    <span>Save Money</span>
+                    <span>Add Savings</span>
                   </button>
                   {goal.totalSaved > 0 && (
                     <button
                       onClick={() => openAllocateModal(goal, 'WITHDRAW')}
                       className="py-2 px-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-semibold rounded-xl text-xs transition-colors flex items-center justify-center space-x-1"
-                      title="Release or use part of this savings goal"
+                      title="Take out or use saved money"
                     >
                       <MinusCircle className="w-3.5 h-3.5" />
-                      <span>Use / Adjust</span>
+                      <span>Take Out</span>
                     </button>
                   )}
                 </div>
@@ -551,12 +548,12 @@ export default function SavingsPage() {
         </div>
       )}
 
-      {/* Recent Savings Contributions Log */}
+      {/* Recent Savings Log */}
       {recentAllocations.length > 0 && (
         <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden">
           <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800">
             <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">
-              Recent Savings Activity
+              Savings History
             </h2>
           </div>
           <div className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -576,11 +573,11 @@ export default function SavingsPage() {
                       <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">
                         {item.goalName}{' '}
                         <span className="text-xs font-normal text-slate-500 dark:text-slate-400">
-                          • Held in {item.accountName}
+                          • In {item.accountName}
                         </span>
                       </div>
                       <div className="text-xs text-slate-400 dark:text-slate-500">
-                        {item.note || (isPositive ? 'Saved' : 'Released')} •{' '}
+                        {item.note || (isPositive ? 'Saved' : 'Taken out')} •{' '}
                         {new Date(item.date).toLocaleDateString()}
                       </div>
                     </div>
@@ -599,7 +596,7 @@ export default function SavingsPage() {
                     <button
                       onClick={() => handleDeleteAllocation(item.id)}
                       className="p-1.5 text-slate-400 hover:text-rose-500 rounded-lg transition-colors"
-                      title="Delete allocation entry"
+                      title="Delete entry"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
@@ -642,7 +639,7 @@ export default function SavingsPage() {
                   </label>
                   <input
                     type="text"
-                    placeholder="e.g. Laptop Fund, General Savings"
+                    placeholder="e.g. Laptop, General Savings"
                     value={goalName}
                     onChange={(e) => setGoalName(e.target.value)}
                     required
@@ -652,15 +649,29 @@ export default function SavingsPage() {
 
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
-                    Target Amount in MMK (Optional)
+                    Goal Amount in MMK (Optional)
                   </label>
-                  <input
-                    type="number"
-                    placeholder="e.g. 2500000 (leave blank for General Savings)"
-                    value={goalTarget}
-                    onChange={(e) => setGoalTarget(e.target.value)}
-                    className="w-full text-lg font-bold px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-                  />
+                  <div className="relative">
+                    <input
+                      type="number"
+                      placeholder="0"
+                      value={goalTarget}
+                      onChange={(e) => setGoalTarget(e.target.value)}
+                      className="w-full text-xl font-black px-3.5 py-2.5 pr-14 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                    />
+                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 dark:text-slate-500">
+                      Kyat
+                    </span>
+                  </div>
+                  {parsedTargetNumber > 0 ? (
+                    <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 mt-1.5 pl-1">
+                      {formatMMK(parsedTargetNumber)}
+                    </p>
+                  ) : (
+                    <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1 pl-1">
+                      Leave empty for General Savings with no fixed target.
+                    </p>
+                  )}
                 </div>
 
                 <div>
@@ -715,7 +726,7 @@ export default function SavingsPage() {
                     disabled={savingGoal}
                     className="flex-1 py-2.5 px-4 text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl shadow-md shadow-emerald-600/20 disabled:opacity-50"
                   >
-                    {savingGoal ? 'Saving...' : editingGoal ? 'Update Goal' : 'Create Goal'}
+                    {savingGoal ? 'Saving...' : editingGoal ? 'Save Changes' : 'Create Goal'}
                   </button>
                 </div>
               </form>
@@ -724,7 +735,7 @@ export default function SavingsPage() {
           document.body
         )}
 
-      {/* Save / Allocate Money Modal */}
+      {/* Save / Take Out Money Modal */}
       {allocModalGoal &&
         typeof document !== 'undefined' &&
         createPortal(
@@ -740,11 +751,11 @@ export default function SavingsPage() {
                 <div>
                   <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">
                     {allocDirection === 'ADD'
-                      ? `Save for "${allocModalGoal.name}"`
-                      : `Use / Release from "${allocModalGoal.name}"`}
+                      ? `Add Savings to "${allocModalGoal.name}"`
+                      : `Take Out from "${allocModalGoal.name}"`}
                   </h3>
                   <p className="text-xs text-slate-500 dark:text-slate-400">
-                    Currently saved: {formatMMK(allocModalGoal.totalSaved)}
+                    Saved so far: {formatMMK(allocModalGoal.totalSaved)}
                   </p>
                 </div>
                 <button
@@ -773,7 +784,7 @@ export default function SavingsPage() {
                           : 'text-slate-500 dark:text-slate-400'
                       }`}
                     >
-                      Move Wallet &amp; Save
+                      Move &amp; Save
                     </button>
                     <button
                       type="button"
@@ -784,7 +795,7 @@ export default function SavingsPage() {
                           : 'text-slate-500 dark:text-slate-400'
                       }`}
                     >
-                      Earmark Existing Cash/Bank
+                      Already in Wallet
                     </button>
                   </div>
                 )}
@@ -812,7 +823,7 @@ export default function SavingsPage() {
                     </div>
                     <div>
                       <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
-                        Hold Savings In
+                        Save Into Wallet
                       </label>
                       <select
                         value={toAccountId}
@@ -831,8 +842,8 @@ export default function SavingsPage() {
                   <div>
                     <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
                       {allocDirection === 'ADD'
-                        ? 'Which Wallet Holds This Savings?'
-                        : 'Release From Which Wallet?'}
+                        ? 'Which Wallet Has This Money?'
+                        : 'Take Out From Which Wallet?'}
                     </label>
                     <select
                       value={toAccountId}
@@ -846,24 +857,35 @@ export default function SavingsPage() {
                       ))}
                     </select>
                     <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
-                      Tags existing money inside this wallet without transferring between wallets.
+                      Uses money already sitting inside this wallet without moving it between wallets.
                     </p>
                   </div>
                 )}
 
+                {/* Amount with live comma preview */}
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
                     Amount (MMK)
                   </label>
-                  <input
-                    type="number"
-                    placeholder="0"
-                    value={allocAmount}
-                    onChange={(e) => setAllocAmount(e.target.value)}
-                    required
-                    min="1"
-                    className="w-full text-2xl font-black px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-                  />
+                  <div className="relative">
+                    <input
+                      type="number"
+                      placeholder="0"
+                      value={allocAmount}
+                      onChange={(e) => setAllocAmount(e.target.value)}
+                      required
+                      min="1"
+                      className="w-full text-2xl font-black px-3.5 py-2.5 pr-14 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                    />
+                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 dark:text-slate-500">
+                      Kyat
+                    </span>
+                  </div>
+                  {parsedAllocNumber > 0 && (
+                    <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 mt-1.5 pl-1">
+                      {formatMMK(parsedAllocNumber)}
+                    </p>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -885,7 +907,7 @@ export default function SavingsPage() {
                     </label>
                     <input
                       type="text"
-                      placeholder="e.g. Stored in wardrobe cash"
+                      placeholder="e.g. Kept cash in wardrobe"
                       value={allocNote}
                       onChange={(e) => setAllocNote(e.target.value)}
                       className="w-full text-sm px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-slate-100"
@@ -915,8 +937,8 @@ export default function SavingsPage() {
                       {allocSubmitting
                         ? 'Saving...'
                         : allocDirection === 'ADD'
-                        ? 'Confirm Save'
-                        : 'Release Amount'}
+                        ? 'Save Money'
+                        : 'Take Out'}
                     </span>
                   </button>
                 </div>
