@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useFinance } from '../../context/FinancialContext';
-import { formatMMK, MONTHS } from '../../lib/utils';
+import { formatMMK, MONTHS, formatDateTime, toLocalDateTimeInput } from '../../lib/utils';
 import { AddIncomeModal } from '../../components/AddIncomeModal';
 import { ConfirmDeleteModal } from '../../components/ConfirmDeleteModal';
 import { ProgressLoading } from '../../components/ProgressLoading';
@@ -59,7 +59,7 @@ export default function IncomesPage() {
   const [receivingPlan, setReceivingPlan] = useState<any | null>(null);
   const [receiveAccountId, setReceiveAccountId] = useState('');
   const [receiveAmount, setReceiveAmount] = useState('');
-  const [receiveDate, setReceiveDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [receiveDate, setReceiveDate] = useState(() => toLocalDateTimeInput());
   const [receiveLoading, setReceiveLoading] = useState(false);
   const [deletingIncomeId, setDeletingIncomeId] = useState<string | null>(null);
   const [isDeletingIncome, setIsDeletingIncome] = useState(false);
@@ -113,7 +113,7 @@ export default function IncomesPage() {
     setReceivingPlan(plan);
     const remaining = Number(plan.expectedAmount) - Number(plan.actualAmount);
     setReceiveAmount(String(remaining > 0 ? remaining : plan.expectedAmount));
-    setReceiveDate(new Date().toISOString().split('T')[0]);
+    setReceiveDate(toLocalDateTimeInput());
   };
 
   const handleConfirmReceive = async (e: React.FormEvent) => {
@@ -140,7 +140,7 @@ export default function IncomesPage() {
     setEditingPlan(plan);
     setEditSource(plan.source);
     setEditExpectedAmount(String(plan.expectedAmount));
-    setEditExpectedDate(plan.expectedDate ? plan.expectedDate.split('T')[0] : '');
+    setEditExpectedDate(plan.expectedDate ? toLocalDateTimeInput(plan.expectedDate) : '');
     setEditDescription(plan.description || '');
   };
 
@@ -299,8 +299,8 @@ export default function IncomesPage() {
                             <div className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">{plan.description}</div>
                           )}
                         </td>
-                        <td className="px-6 py-4 text-xs font-medium text-slate-500 dark:text-slate-400">
-                          {plan.expectedDate ? new Date(plan.expectedDate).toLocaleDateString() : '—'}
+                        <td className="px-6 py-4 text-xs font-medium text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                          {plan.expectedDate ? formatDateTime(plan.expectedDate) : '—'}
                         </td>
                         <td className="px-6 py-4 font-bold text-slate-800 dark:text-slate-200">{formatMMK(plan.expectedAmount)}</td>
                         <td className="px-6 py-4 font-bold text-emerald-600 dark:text-emerald-400">{formatMMK(plan.actualAmount)}</td>
@@ -380,7 +380,7 @@ export default function IncomesPage() {
                           <div className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">{plan.description}</div>
                         )}
                         <div className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">
-                          Date: {plan.expectedDate ? new Date(plan.expectedDate).toLocaleDateString() : '—'}
+                          Date: {plan.expectedDate ? formatDateTime(plan.expectedDate) : '—'}
                         </div>
                       </div>
                       <div>
@@ -527,9 +527,9 @@ export default function IncomesPage() {
                 )}
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">Expected Date</label>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">Date &amp; Time</label>
                 <input
-                  type="date"
+                  type="datetime-local"
                   value={editExpectedDate}
                   onChange={(e) => setEditExpectedDate(e.target.value)}
                   className="w-full text-sm font-medium px-3 py-2.5 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none text-slate-900 dark:text-slate-100"
@@ -609,9 +609,9 @@ export default function IncomesPage() {
                 )}
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">Date Received</label>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">Date &amp; Time Received</label>
                 <input
-                  type="date"
+                  type="datetime-local"
                   value={receiveDate}
                   onChange={(e) => setReceiveDate(e.target.value)}
                   className="w-full text-sm font-medium px-3 py-2.5 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none text-slate-900 dark:text-slate-100"

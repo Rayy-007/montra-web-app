@@ -23,7 +23,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useFinance } from '../../context/FinancialContext';
-import { formatMMK, MONTHS } from '../../lib/utils';
+import { formatMMK, MONTHS, formatDateTime } from '../../lib/utils';
 import { AddExpenseModal } from '../../components/AddExpenseModal';
 import { EditExpenseModal } from '../../components/EditExpenseModal';
 import { ConfirmDeleteModal } from '../../components/ConfirmDeleteModal';
@@ -513,8 +513,8 @@ export default function ExpensesPage() {
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                   {sortedTransactions.map((tx) => (
                     <tr key={tx.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/50 transition-colors">
-                      <td className="px-6 py-4 text-xs font-medium text-slate-600 dark:text-slate-400">
-                        {new Date(tx.date).toLocaleDateString()}
+                      <td className="px-6 py-4 text-xs font-medium text-slate-600 dark:text-slate-400 whitespace-nowrap">
+                        {formatDateTime(tx.date)}
                       </td>
                       <td className="px-6 py-4">
                         <span className="inline-flex items-center text-xs font-semibold px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200">
@@ -578,7 +578,7 @@ export default function ExpensesPage() {
                       <p className="text-xs text-slate-600 dark:text-slate-300 truncate">{tx.description}</p>
                     )}
                     <p className="text-[11px] text-slate-400 dark:text-slate-500">
-                      {new Date(tx.date).toLocaleDateString()}
+                      {formatDateTime(tx.date)}
                     </p>
                   </div>
 

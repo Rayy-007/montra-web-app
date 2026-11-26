@@ -25,7 +25,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useFinance } from '../../context/FinancialContext';
-import { formatMMK, MONTHS } from '../../lib/utils';
+import { formatMMK, MONTHS, formatDateTime } from '../../lib/utils';
 import { ProgressLoading } from '../../components/ProgressLoading';
 import { InfoTooltip } from '../../components/InfoTooltip';
 import { TransferModal } from '../../components/TransferModal';
@@ -305,8 +305,8 @@ export default function WalletsPage() {
         acc.startingBalance !== undefined
           ? Number(acc.startingBalance)
           : monthly?.startingBalance !== undefined
-          ? Number(monthly.startingBalance)
-          : undefined,
+            ? Number(monthly.startingBalance)
+            : undefined,
       isCarriedOver: acc.isCarriedOver ?? monthly?.isCarriedOver ?? false,
       balance: Number(acc.balance) || 0,
       earmarkedSavings: Number(acc.earmarkedSavings ?? monthly?.earmarkedSavings ?? 0),
@@ -522,11 +522,10 @@ export default function WalletsPage() {
                       <div>
                         <div className="text-[10px] text-slate-400 uppercase font-medium">Leftover</div>
                         <div
-                          className={`text-sm font-bold ${
-                            acc.monthlyNet >= 0
-                              ? 'text-emerald-600 dark:text-emerald-400'
-                              : 'text-rose-500 dark:text-rose-400'
-                          }`}
+                          className={`text-sm font-bold ${acc.monthlyNet >= 0
+                            ? 'text-emerald-600 dark:text-emerald-400'
+                            : 'text-rose-500 dark:text-rose-400'
+                            }`}
                         >
                           {acc.monthlyNet >= 0 ? '+' : ''}
                           {formatMMK(acc.monthlyNet)}
@@ -556,9 +555,8 @@ export default function WalletsPage() {
                       </div>
                       <div className="w-full bg-slate-200 dark:bg-slate-800 rounded-full h-2 overflow-hidden">
                         <div
-                          className={`h-2 rounded-full transition-all duration-500 ${
-                            budgetUsage > 90 ? 'bg-rose-500' : budgetUsage > 70 ? 'bg-amber-500' : 'bg-teal-500'
-                          }`}
+                          className={`h-2 rounded-full transition-all duration-500 ${budgetUsage > 90 ? 'bg-rose-500' : budgetUsage > 70 ? 'bg-amber-500' : 'bg-teal-500'
+                            }`}
                           style={{ width: `${budgetUsage}%` }}
                         />
                       </div>
@@ -660,18 +658,17 @@ export default function WalletsPage() {
                       </span>
                       {tr.transferTag && (
                         <span
-                          className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
-                            tr.transferTag === 'RESERVE_DRAW'
-                              ? 'bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300'
-                              : 'bg-sky-100 dark:bg-sky-950/60 text-sky-700 dark:text-sky-300'
-                          }`}
+                          className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${tr.transferTag === 'RESERVE_DRAW'
+                            ? 'bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300'
+                            : 'bg-sky-100 dark:bg-sky-950/60 text-sky-700 dark:text-sky-300'
+                            }`}
                         >
                           {formatTransferTagLabel(tr.transferTag)}
                         </span>
                       )}
                     </div>
                     <div className="text-xs text-slate-400 dark:text-slate-500">
-                      {tr.description || 'Wallet Transfer'} • {new Date(tr.date).toLocaleDateString()}
+                      {tr.description || 'Wallet Transfer'} • {formatDateTime(tr.date)}
                     </div>
                   </div>
                 </div>
@@ -773,14 +770,14 @@ export default function WalletsPage() {
                         nextType === 'BANK'
                           ? 'RESERVE'
                           : nextType === 'SAVINGS'
-                          ? 'SAVINGS_HOLDING'
-                          : 'DAILY_SPENDING'
+                            ? 'SAVINGS_HOLDING'
+                            : 'DAILY_SPENDING'
                       );
                     }}
                     className="w-full text-sm font-medium px-3 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-teal-500 focus:outline-none"
                   >
                     <option value="CASH" className="dark:bg-slate-900">Cash in Hand</option>
-                    <option value="MOBILE_WALLET" className="dark:bg-slate-900">Mobile Wallet (KPay, Wave)</option>
+                    <option value="MOBILE_WALLET" className="dark:bg-slate-900">Mobile Wallet (KPay, Wave, AYA Pay)</option>
                     <option value="BANK" className="dark:bg-slate-900">Bank Account</option>
                     <option value="SAVINGS" className="dark:bg-slate-900">Savings Account</option>
                   </select>
@@ -795,7 +792,7 @@ export default function WalletsPage() {
                     onChange={(e) => setWalletRole(e.target.value as any)}
                     className="w-full text-sm font-medium px-3 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-teal-500 focus:outline-none"
                   >
-                    <option value="DAILY_SPENDING" className="dark:bg-slate-900">Daily Use (KPay, Everyday Cash)</option>
+                    <option value="DAILY_SPENDING" className="dark:bg-slate-900">Daily Use (KPay, AYA Pay,Everyday Cash)</option>
                     <option value="RESERVE" className="dark:bg-slate-900">Main Bank / Backup (KBZ Bank)</option>
                     <option value="SAVINGS_HOLDING" className="dark:bg-slate-900">Savings Storage (AYA Bank, Wardrobe Cash)</option>
                   </select>
@@ -926,7 +923,7 @@ export default function WalletsPage() {
                     className="w-full text-sm font-medium px-3 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-teal-500 focus:outline-none"
                   >
                     <option value="CASH" className="dark:bg-slate-900">Cash in Hand</option>
-                    <option value="MOBILE_WALLET" className="dark:bg-slate-900">Mobile Wallet (KPay, Wave)</option>
+                    <option value="MOBILE_WALLET" className="dark:bg-slate-900">Mobile Wallet (KPay, Wave, AYA Pay)</option>
                     <option value="BANK" className="dark:bg-slate-900">Bank Account</option>
                     <option value="SAVINGS" className="dark:bg-slate-900">Savings Account</option>
                   </select>
@@ -941,7 +938,7 @@ export default function WalletsPage() {
                     onChange={(e) => setEditRole(e.target.value as any)}
                     className="w-full text-sm font-medium px-3 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-teal-500 focus:outline-none"
                   >
-                    <option value="DAILY_SPENDING" className="dark:bg-slate-900">Daily Use (KPay, Everyday Cash)</option>
+                    <option value="DAILY_SPENDING" className="dark:bg-slate-900">Daily Use (KPay, AYA Pay, Everyday Cash)</option>
                     <option value="RESERVE" className="dark:bg-slate-900">Main Bank / Backup (KBZ Bank)</option>
                     <option value="SAVINGS_HOLDING" className="dark:bg-slate-900">Savings Storage (AYA Bank, Wardrobe Cash)</option>
                   </select>

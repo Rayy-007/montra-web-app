@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom';
 import { X, TrendingUp, AlertCircle } from 'lucide-react';
 import { useFinance } from '../context/FinancialContext';
 import api from '../lib/api';
-import { formatMMK } from '../lib/utils';
+import { formatMMK, toLocalDateTimeInput } from '../lib/utils';
 
 interface AddIncomeModalProps {
   isOpen: boolean;
@@ -21,7 +21,7 @@ export const AddIncomeModal: React.FC<AddIncomeModalProps> = ({
   const { month, year, accounts, refreshData } = useFinance();
   const [source, setSource] = useState('');
   const [expectedAmount, setExpectedAmount] = useState('');
-  const [expectedDate, setExpectedDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [expectedDate, setExpectedDate] = useState(() => toLocalDateTimeInput());
   const [isReceivedInstantly, setIsReceivedInstantly] = useState(false);
   const [targetAccountId, setTargetAccountId] = useState('');
   const [description, setDescription] = useState('');
@@ -157,10 +157,10 @@ export const AddIncomeModal: React.FC<AddIncomeModalProps> = ({
           {/* Expected Date */}
           <div>
             <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
-              Expected Date
+              Date &amp; Time
             </label>
             <input
-              type="date"
+              type="datetime-local"
               value={expectedDate}
               onChange={(e) => setExpectedDate(e.target.value)}
               className="w-full text-sm font-medium px-3 py-2.5 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none text-slate-900 dark:text-slate-100"

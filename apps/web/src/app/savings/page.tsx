@@ -25,7 +25,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useFinance } from '../../context/FinancialContext';
-import { formatMMK, MONTHS } from '../../lib/utils';
+import { formatMMK, MONTHS, formatDateTime, toLocalDateTimeInput } from '../../lib/utils';
 import { ProgressLoading } from '../../components/ProgressLoading';
 import { InfoTooltip } from '../../components/InfoTooltip';
 import { ConfirmDeleteModal } from '../../components/ConfirmDeleteModal';
@@ -73,7 +73,7 @@ export default function SavingsPage() {
   const [toAccountId, setToAccountId] = useState('');
   const [allocAmount, setAllocAmount] = useState('');
   const [allocNote, setAllocNote] = useState('');
-  const [allocDate, setAllocDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [allocDate, setAllocDate] = useState(() => toLocalDateTimeInput());
   const [allocSubmitting, setAllocSubmitting] = useState(false);
   const [allocError, setAllocError] = useState('');
 
@@ -185,7 +185,7 @@ export default function SavingsPage() {
     setAllocError('');
     setAllocAmount('');
     setAllocNote('');
-    setAllocDate(new Date().toISOString().split('T')[0]);
+    setAllocDate(toLocalDateTimeInput());
 
     const savingsWallet =
       accounts.find((a) => a.role === 'SAVINGS_HOLDING' || a.type === 'SAVINGS') ||
@@ -235,7 +235,7 @@ export default function SavingsPage() {
         toAccountId,
         amount: signedAmount,
         note: allocNote.trim() || null,
-        date: allocDate,
+        date: new Date(allocDate).toISOString(),
       });
 
       setAllocModalGoal(null);
@@ -601,7 +601,7 @@ export default function SavingsPage() {
                       </div>
                       <div className="text-xs text-slate-400 dark:text-slate-500">
                         {item.note || (isPositive ? 'Saved' : 'Taken out')} •{' '}
-                        {new Date(item.date).toLocaleDateString()}
+                        {formatDateTime(item.date)}
                       </div>
                     </div>
                   </div>
@@ -914,10 +914,10 @@ export default function SavingsPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
-                      Date
+                      Date &amp; Time
                     </label>
                     <input
-                      type="date"
+                      type="datetime-local"
                       value={allocDate}
                       onChange={(e) => setAllocDate(e.target.value)}
                       required

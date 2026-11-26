@@ -21,7 +21,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useFinance } from '../../context/FinancialContext';
-import { formatMMK, MONTHS } from '../../lib/utils';
+import { formatMMK, MONTHS, formatDateTime } from '../../lib/utils';
 import { AddExpenseModal } from '../../components/AddExpenseModal';
 import { AddIncomeModal } from '../../components/AddIncomeModal';
 import { TransferModal } from '../../components/TransferModal';
@@ -329,7 +329,7 @@ export default function DashboardPage() {
                   >
                     <span>{item.fromAccountName} → {item.toAccountName}:</span>
                     <span className="text-amber-700 dark:text-amber-400 font-bold">{formatMMK(item.amount)}</span>
-                    <span className="text-slate-400">({new Date(item.date).toLocaleDateString()})</span>
+                    <span className="text-slate-400">({formatDateTime(item.date)})</span>
                   </span>
                 ))}
               </div>
@@ -445,7 +445,7 @@ export default function DashboardPage() {
                               ? 'Put Into Savings'
                               : 'Top Up Wallet'
                             : tx.account?.name}{' '}
-                          • {new Date(tx.date).toLocaleDateString()}
+                          • {formatDateTime(tx.date)}
                         </div>
                       </div>
                     </div>

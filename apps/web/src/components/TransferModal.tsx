@@ -14,7 +14,7 @@ import {
   Info,
 } from 'lucide-react';
 import { useFinance } from '../context/FinancialContext';
-import { formatMMK } from '../lib/utils';
+import { formatMMK, toLocalDateTimeInput } from '../lib/utils';
 import api from '../lib/api';
 
 interface TransferModalProps {
@@ -46,7 +46,7 @@ export const TransferModal: React.FC<TransferModalProps> = ({
   const [toAccountId, setToAccountId] = useState('');
   const [amount, setAmount] = useState('');
   const [transferTag, setTransferTag] = useState('TOP_UP');
-  const [date, setDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState(() => toLocalDateTimeInput());
   const [description, setDescription] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -61,7 +61,7 @@ export const TransferModal: React.FC<TransferModalProps> = ({
     setAmount('');
     setDescription('');
     setError('');
-    setDate(new Date().toISOString().split('T')[0]);
+    setDate(toLocalDateTimeInput());
   }, [isOpen, accounts, defaultFromId, defaultToId]);
 
   useEffect(() => {
@@ -117,7 +117,7 @@ export const TransferModal: React.FC<TransferModalProps> = ({
         type: 'TRANSFER',
         transferTag,
         amount: parsedAmount,
-        date,
+        date: new Date(date).toISOString(),
         description:
           description.trim() ||
           `${selectedTagObj?.label || 'Transfer'}: ${fromAccount?.name} → ${toAccount?.name}`,
@@ -316,10 +316,10 @@ export const TransferModal: React.FC<TransferModalProps> = ({
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
-                      Date
+                      Date &amp; Time
                     </label>
                     <input
-                      type="date"
+                      type="datetime-local"
                       value={date}
                       onChange={(e) => setDate(e.target.value)}
                       required
