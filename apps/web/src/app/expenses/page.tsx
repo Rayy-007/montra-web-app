@@ -26,6 +26,7 @@ import { useFinance } from '../../context/FinancialContext';
 import { formatMMK, MONTHS } from '../../lib/utils';
 import { AddExpenseModal } from '../../components/AddExpenseModal';
 import { EditExpenseModal } from '../../components/EditExpenseModal';
+import { ConfirmDeleteModal } from '../../components/ConfirmDeleteModal';
 import { ProgressLoading } from '../../components/ProgressLoading';
 import { InfoTooltip } from '../../components/InfoTooltip';
 import api from '../../lib/api';
@@ -50,6 +51,9 @@ export default function ExpensesPage() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingTx, setEditingTx] = useState<any | null>(null);
+  const [deletingTxId, setDeletingTxId] = useState<string | null>(null);
+  const [isDeletingTx, setIsDeletingTx] = useState(false);
+  const [deleteTxError, setDeleteTxError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedWallet, setSelectedWallet] = useState<string>('ALL');
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
@@ -100,23 +104,33 @@ export default function ExpensesPage() {
     }
   }, [user, month, year]);
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this expense? This will refund the wallet balance.')) return;
+  const handleDelete = (id: string) => {
+    setDeleteTxError(null);
+    setDeletingTxId(id);
+  };
 
-    // Optimistic UI update
+  const handleConfirmDelete = async () => {
+    if (!deletingTxId) return;
+    const id = deletingTxId;
+    setIsDeletingTx(true);
+    setDeleteTxError(null);
+
     const previous = [...transactions];
-    const updated = transactions.filter(tx => tx.id !== id);
+    const updated = transactions.filter((tx) => tx.id !== id);
     setTransactions(updated);
     setCachedExpenses(updated, month, year);
 
     try {
       await api.delete(`/transactions/${id}`);
+      setDeletingTxId(null);
       refreshData();
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to delete transaction:', err);
       setTransactions(previous);
       setCachedExpenses(previous, month, year);
-      alert('Failed to delete transaction. Restored.');
+      setDeleteTxError(err.response?.data?.message || 'Failed to delete expense. Restored.');
+    } finally {
+      setIsDeletingTx(false);
     }
   };
 
@@ -626,6 +640,22 @@ export default function ExpensesPage() {
         onSuccess={() => {
           loadTransactions(true);
         }}
+      />
+
+      {/* Delete Expense Confirmation Modal */}
+      <ConfirmDeleteModal
+        isOpen={!!deletingTxId}
+        title="Delete Expense"
+        description="Are you sure you want to delete this expense?"
+        warningTitle="Wallet Refund"
+        warningText="The expense amount will be added back to your wallet balance."
+        confirmLabel="Delete Expense"
+        isDeleting={isDeletingTx}
+        error={deleteTxError}
+        onClose={() => {
+          if (!isDeletingTx) setDeletingTxId(null);
+        }}
+        onConfirm={handleConfirmDelete}
       />
     </div>
   );

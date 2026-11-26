@@ -20,6 +20,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useFinance } from '../../context/FinancialContext';
 import { formatMMK, MONTHS } from '../../lib/utils';
 import { AddIncomeModal } from '../../components/AddIncomeModal';
+import { ConfirmDeleteModal } from '../../components/ConfirmDeleteModal';
 import { ProgressLoading } from '../../components/ProgressLoading';
 import { InfoTooltip } from '../../components/InfoTooltip';
 import api from '../../lib/api';
@@ -60,6 +61,9 @@ export default function IncomesPage() {
   const [receiveAmount, setReceiveAmount] = useState('');
   const [receiveDate, setReceiveDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [receiveLoading, setReceiveLoading] = useState(false);
+  const [deletingIncomeId, setDeletingIncomeId] = useState<string | null>(null);
+  const [isDeletingIncome, setIsDeletingIncome] = useState(false);
+  const [deleteIncomeError, setDeleteIncomeError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!authLoading && !user) router.push('/login');
@@ -163,14 +167,25 @@ export default function IncomesPage() {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Delete this income entry? This cannot be undone.')) return;
+  const handleDelete = (id: string) => {
+    setDeleteIncomeError(null);
+    setDeletingIncomeId(id);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deletingIncomeId) return;
+    setIsDeletingIncome(true);
+    setDeleteIncomeError(null);
     try {
-      await api.delete(`/incomes/${id}`);
+      await api.delete(`/incomes/${deletingIncomeId}`);
+      setDeletingIncomeId(null);
       await loadIncomes(true);
       refreshData();
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to delete income:', err);
+      setDeleteIncomeError(err.response?.data?.message || 'Failed to delete income entry.');
+    } finally {
+      setIsDeletingIncome(false);
     }
   };
 
@@ -616,6 +631,21 @@ export default function IncomesPage() {
         </div>,
         document.body
       )}
+
+      <ConfirmDeleteModal
+        isOpen={!!deletingIncomeId}
+        title="Delete Income Entry"
+        description="Are you sure you want to delete this income entry?"
+        warningTitle="Cannot Be Undone"
+        warningText="This income record will be permanently removed."
+        confirmLabel="Delete Income"
+        isDeleting={isDeletingIncome}
+        error={deleteIncomeError}
+        onClose={() => {
+          if (!isDeletingIncome) setDeletingIncomeId(null);
+        }}
+        onConfirm={handleConfirmDelete}
+      />
     </div>
   );
 }

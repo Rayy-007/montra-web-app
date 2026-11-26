@@ -29,6 +29,7 @@ import { formatMMK, MONTHS } from '../../lib/utils';
 import { ProgressLoading } from '../../components/ProgressLoading';
 import { InfoTooltip } from '../../components/InfoTooltip';
 import { TransferModal } from '../../components/TransferModal';
+import { ConfirmDeleteModal } from '../../components/ConfirmDeleteModal';
 import api from '../../lib/api';
 
 export default function WalletsPage() {
@@ -48,6 +49,9 @@ export default function WalletsPage() {
   // Transfers list & loading state
   const [recentTransfers, setRecentTransfers] = useState<any[]>([]);
   const [transfersLoading, setTransfersLoading] = useState(true);
+  const [deletingTransfer, setDeletingTransfer] = useState<any | null>(null);
+  const [isDeletingTransfer, setIsDeletingTransfer] = useState(false);
+  const [deleteTransferError, setDeleteTransferError] = useState<string | null>(null);
 
   // Edit Wallet State
   const [editingAccount, setEditingAccount] = useState<any | null>(null);
@@ -90,13 +94,23 @@ export default function WalletsPage() {
     if (user) loadTransfers();
   }, [user, month, year]);
 
-  const handleDeleteTransfer = async (id: string) => {
-    if (!confirm('Delete this transfer? Both wallets will go back to their previous balances.')) return;
+  const handleDeleteTransfer = (transfer: any) => {
+    setDeleteTransferError(null);
+    setDeletingTransfer(transfer);
+  };
+
+  const handleConfirmDeleteTransfer = async () => {
+    if (!deletingTransfer) return;
+    setIsDeletingTransfer(true);
+    setDeleteTransferError(null);
     try {
-      await api.delete(`/transactions/${id}`);
+      await api.delete(`/transactions/${deletingTransfer.id}`);
+      setDeletingTransfer(null);
       await Promise.all([refreshData(), loadTransfers()]);
-    } catch {
-      alert('Failed to delete transfer.');
+    } catch (err: any) {
+      setDeleteTransferError(err.response?.data?.message || 'Failed to delete transfer.');
+    } finally {
+      setIsDeletingTransfer(false);
     }
   };
 
@@ -652,7 +666,7 @@ export default function WalletsPage() {
                 <div className="flex items-center space-x-3">
                   <span className="text-sm font-bold text-sky-600 dark:text-sky-400">{formatMMK(tr.amount)}</span>
                   <button
-                    onClick={() => handleDeleteTransfer(tr.id)}
+                    onClick={() => handleDeleteTransfer(tr)}
                     title="Delete transfer"
                     className="p-1.5 text-slate-400 hover:text-rose-500 rounded-lg transition-colors"
                   >
@@ -1112,6 +1126,25 @@ export default function WalletsPage() {
         onSuccess={() => {
           loadTransfers();
         }}
+      />
+
+      <ConfirmDeleteModal
+        isOpen={!!deletingTransfer}
+        title="Delete Transfer"
+        description={
+          deletingTransfer
+            ? `Delete transfer ${deletingTransfer.account?.name || ''} → ${deletingTransfer.toAccount?.name || 'Wallet'} (${formatMMK(deletingTransfer.amount)})?`
+            : 'Delete this transfer?'
+        }
+        warningTitle="Wallet Balances Revert"
+        warningText="Both wallets will return to their balances before this transfer."
+        confirmLabel="Delete Transfer"
+        isDeleting={isDeletingTransfer}
+        error={deleteTransferError}
+        onClose={() => {
+          if (!isDeletingTransfer) setDeletingTransfer(null);
+        }}
+        onConfirm={handleConfirmDeleteTransfer}
       />
     </div>
   );

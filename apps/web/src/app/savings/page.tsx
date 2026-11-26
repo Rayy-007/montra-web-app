@@ -28,6 +28,7 @@ import { useFinance } from '../../context/FinancialContext';
 import { formatMMK, MONTHS } from '../../lib/utils';
 import { ProgressLoading } from '../../components/ProgressLoading';
 import { InfoTooltip } from '../../components/InfoTooltip';
+import { ConfirmDeleteModal } from '../../components/ConfirmDeleteModal';
 import api from '../../lib/api';
 
 const GOAL_ICONS = [
@@ -75,6 +76,14 @@ export default function SavingsPage() {
   const [allocDate, setAllocDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [allocSubmitting, setAllocSubmitting] = useState(false);
   const [allocError, setAllocError] = useState('');
+
+  // Custom Delete Modals
+  const [deletingGoal, setDeletingGoal] = useState<any | null>(null);
+  const [isDeletingGoal, setIsDeletingGoal] = useState(false);
+  const [deleteGoalError, setDeleteGoalError] = useState<string | null>(null);
+  const [deletingAllocation, setDeletingAllocation] = useState<any | null>(null);
+  const [isDeletingAllocation, setIsDeletingAllocation] = useState(false);
+  const [deleteAllocationError, setDeleteAllocationError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -149,20 +158,24 @@ export default function SavingsPage() {
     }
   };
 
-  const handleDeleteGoal = async (goal: any) => {
-    if (
-      !confirm(
-        `Remove "${goal.name}" goal? Your wallet money (AYA Bank, Cash, etc.) will NOT be deleted.`
-      )
-    ) {
-      return;
-    }
+  const handleDeleteGoal = (goal: any) => {
+    setDeleteGoalError(null);
+    setDeletingGoal(goal);
+  };
+
+  const handleConfirmDeleteGoal = async () => {
+    if (!deletingGoal) return;
+    setIsDeletingGoal(true);
+    setDeleteGoalError(null);
     try {
-      await api.delete(`/savings/goals/${goal.id}`);
+      await api.delete(`/savings/goals/${deletingGoal.id}`);
+      setDeletingGoal(null);
       await loadSavings(true);
       await refreshData();
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Failed to delete goal.');
+      setDeleteGoalError(err.response?.data?.message || 'Failed to delete goal.');
+    } finally {
+      setIsDeletingGoal(false);
     }
   };
 
@@ -234,13 +247,23 @@ export default function SavingsPage() {
     }
   };
 
-  const handleDeleteAllocation = async (id: string) => {
-    if (!confirm('Remove this savings record?')) return;
+  const handleDeleteAllocation = (item: any) => {
+    setDeleteAllocationError(null);
+    setDeletingAllocation(item);
+  };
+
+  const handleConfirmDeleteAllocation = async () => {
+    if (!deletingAllocation) return;
+    setIsDeletingAllocation(true);
+    setDeleteAllocationError(null);
     try {
-      await api.delete(`/savings/allocations/${id}`);
+      await api.delete(`/savings/allocations/${deletingAllocation.id}`);
+      setDeletingAllocation(null);
       await Promise.all([loadSavings(true), refreshData()]);
-    } catch (err) {
-      console.error('Failed to delete record:', err);
+    } catch (err: any) {
+      setDeleteAllocationError(err.response?.data?.message || 'Failed to delete entry.');
+    } finally {
+      setIsDeletingAllocation(false);
     }
   };
 
@@ -594,7 +617,7 @@ export default function SavingsPage() {
                       {formatMMK(item.amount)}
                     </span>
                     <button
-                      onClick={() => handleDeleteAllocation(item.id)}
+                      onClick={() => handleDeleteAllocation(item)}
                       className="p-1.5 text-slate-400 hover:text-rose-500 rounded-lg transition-colors"
                       title="Delete entry"
                     >
@@ -947,6 +970,44 @@ export default function SavingsPage() {
           </div>,
           document.body
         )}
+
+      <ConfirmDeleteModal
+        isOpen={!!deletingGoal}
+        title="Delete Savings Goal"
+        description={
+          deletingGoal
+            ? `Are you sure you want to delete "${deletingGoal.name}"?`
+            : 'Delete this savings goal?'
+        }
+        warningTitle="Wallet Money Stays Safe"
+        warningText="Only the goal label will be removed. Your money in AYA Bank, Cash, or other wallets will NOT be deleted."
+        confirmLabel="Delete Goal"
+        isDeleting={isDeletingGoal}
+        error={deleteGoalError}
+        onClose={() => {
+          if (!isDeletingGoal) setDeletingGoal(null);
+        }}
+        onConfirm={handleConfirmDeleteGoal}
+      />
+
+      <ConfirmDeleteModal
+        isOpen={!!deletingAllocation}
+        title="Delete Savings Entry"
+        description={
+          deletingAllocation
+            ? `Remove this ${formatMMK(Math.abs(deletingAllocation.amount))} entry from "${deletingAllocation.goalName}"?`
+            : 'Remove this savings record?'
+        }
+        warningTitle="Goal Progress Update"
+        warningText="Removing this entry updates the saved total on your goal without changing your wallet balance."
+        confirmLabel="Remove Entry"
+        isDeleting={isDeletingAllocation}
+        error={deleteAllocationError}
+        onClose={() => {
+          if (!isDeletingAllocation) setDeletingAllocation(null);
+        }}
+        onConfirm={handleConfirmDeleteAllocation}
+      />
     </div>
   );
 }
