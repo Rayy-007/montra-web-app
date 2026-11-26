@@ -11,6 +11,7 @@ import transactionRoutes from './modules/transactions/transaction.routes';
 import incomeRoutes from './modules/incomes/income.routes';
 import budgetRoutes from './modules/budgets/budget.routes';
 import insightRoutes from './modules/insights/insight.routes';
+import savingsRoutes from './modules/savings/savings.routes';
 
 const app = express();
 const port = Number(process.env.PORT) || 5000;
@@ -61,6 +62,7 @@ app.use('/api/transactions', transactionRoutes);
 app.use('/api/incomes', incomeRoutes);
 app.use('/api/budgets', budgetRoutes);
 app.use('/api/insights', insightRoutes);
+app.use('/api/savings', savingsRoutes);
 
 // Error Handling Middleware
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {

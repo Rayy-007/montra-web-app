@@ -15,7 +15,8 @@ import {
   CheckCircle2, 
   Clock, 
   FileText,
-  RotateCw
+  RotateCw,
+  PiggyBank
 } from 'lucide-react';
 import { formatMMK, MONTHS } from '../lib/utils';
 import { useAuth } from '../context/AuthContext';
@@ -46,6 +47,7 @@ export function MonthlySummaryModal({
     budgets: any;
     incomes: any;
     insights: any;
+    savings: any;
   } | null>(null);
 
   const monthLabel = MONTHS.find((m) => m.value === month)?.label || `Month ${month}`;
@@ -58,11 +60,12 @@ export function MonthlySummaryModal({
 
     const fetchReportData = async () => {
       try {
-        const [accRes, budgetRes, incomeRes, insightRes] = await Promise.allSettled([
+        const [accRes, budgetRes, incomeRes, insightRes, savingsRes] = await Promise.allSettled([
           api.get(`/accounts/monthly?month=${month}&year=${year}`),
           api.get(`/budgets?month=${month}&year=${year}`),
           api.get(`/incomes?month=${month}&year=${year}`),
-          api.get(`/insights/month?month=${month}&year=${year}`)
+          api.get(`/insights/month?month=${month}&year=${year}`),
+          api.get(`/savings?month=${month}&year=${year}`)
         ]);
 
         if (isMounted) {
@@ -82,11 +85,16 @@ export function MonthlySummaryModal({
             ? insightRes.value.data
             : (ctxInsights || { actualInsight: {}, expectedInsight: {} });
 
+          const savingsData = savingsRes.status === 'fulfilled' && savingsRes.value.data
+            ? savingsRes.value.data
+            : { goals: [], summary: {} };
+
           setReportData({
             accounts: accountsData,
             budgets: budgetsData,
             incomes: incomesData,
-            insights: insightsData
+            insights: insightsData,
+            savings: savingsData
           });
         }
       } catch (err) {
@@ -290,6 +298,7 @@ export function MonthlySummaryModal({
   const budgets = reportData?.budgets || { categories: [] };
   const incomes = reportData?.incomes || { items: [] };
   const insights = reportData?.insights || ctxInsights || {};
+  const savingsGoals: any[] = reportData?.savings?.goals || [];
 
   // CRITICAL: Filter budgets strictly to those with plannedAmount > 0
   const setBudgetCategories = (budgets.categories || []).filter(
@@ -804,6 +813,52 @@ export function MonthlySummaryModal({
                     </div>
                   )}
                 </div>
+
+                {/* Section 5: Savings Goals Progress (Excluded from Expenses) */}
+                {savingsGoals.length > 0 && (
+                  <div className="pdf-section space-y-3">
+                    <div className="flex items-center justify-between pb-1 border-b border-slate-100">
+                      <h3 className="text-sm font-bold uppercase tracking-wider text-slate-900 flex items-center space-x-2">
+                        <PiggyBank className="w-4 h-4 text-emerald-600" />
+                        <span>5. Savings Goals (Excluded from Expenses)</span>
+                      </h3>
+                      <span className="text-xs text-slate-500">
+                        Total Saved: {formatMMK(reportData?.savings?.summary?.totalSavedAllGoals || 0)}
+                      </span>
+                    </div>
+
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-xs border border-slate-200 rounded-xl overflow-hidden">
+                        <thead className="bg-slate-100/80 text-slate-700 font-bold border-b border-slate-200">
+                          <tr>
+                            <th className="py-2.5 px-3">Goal Name</th>
+                            <th className="py-2.5 px-3">Held In</th>
+                            <th className="py-2.5 px-3 text-right">Target</th>
+                            <th className="py-2.5 px-3 text-right">Total Saved</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          {savingsGoals.map((g: any) => (
+                            <tr key={g.id} className="hover:bg-slate-50/50">
+                              <td className="py-2.5 px-3 font-semibold text-slate-900">{g.name}</td>
+                              <td className="py-2.5 px-3 text-slate-600">
+                                {g.walletBreakdown?.length > 0
+                                  ? g.walletBreakdown.map((w: any) => `${w.accountName}: ${formatMMK(w.amount)}`).join(', ')
+                                  : '—'}
+                              </td>
+                              <td className="py-2.5 px-3 text-right text-slate-600">
+                                {g.targetAmount ? formatMMK(g.targetAmount) : 'Open'}
+                              </td>
+                              <td className="py-2.5 px-3 text-right font-bold text-emerald-600">
+                                {formatMMK(g.totalSaved)}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
 
                 {/* Report Footer */}
                 <div className="pdf-section pdf-footer pt-6 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between text-[11px] text-slate-400 gap-2">

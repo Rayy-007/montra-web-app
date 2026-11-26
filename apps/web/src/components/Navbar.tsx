@@ -9,6 +9,7 @@ import {
   Receipt,
   PieChart,
   Wallet,
+  PiggyBank,
   LogOut,
   ChevronDown,
   ChevronLeft,
@@ -95,6 +96,7 @@ export const Navbar: React.FC = () => {
     { label: 'Incomes', href: '/incomes', icon: TrendingUp },
     { label: 'Expenses', href: '/expenses', icon: Receipt },
     { label: 'Budgets', href: '/budgets', icon: PieChart },
+    { label: 'Savings', href: '/savings', icon: PiggyBank },
     { label: 'Wallets', href: '/wallets', icon: Wallet },
   ];
 
@@ -302,7 +304,7 @@ export const Navbar: React.FC = () => {
         aria-label="Mobile Navigation"
         className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-t border-slate-200/90 dark:border-slate-800 shadow-[0_-4px_24px_rgba(0,0,0,0.06)] dark:shadow-[0_-4px_24px_rgba(0,0,0,0.5)] px-2 py-1.5 pb-[max(0.375rem,env(safe-area-inset-bottom))] transition-colors"
       >
-        <div className="grid grid-cols-5 gap-1 max-w-md mx-auto items-center">
+        <div className="grid grid-cols-6 gap-1 max-w-md mx-auto items-center">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = pathname === item.href;

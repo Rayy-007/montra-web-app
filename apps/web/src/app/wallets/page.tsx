@@ -18,13 +18,17 @@ import {
   Edit2, 
   RotateCcw,
   Check,
-  AlertTriangle
+  AlertTriangle,
+  ArrowLeftRight,
+  ShieldCheck,
+  Sparkles
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useFinance } from '../../context/FinancialContext';
 import { formatMMK, MONTHS } from '../../lib/utils';
 import { ProgressLoading } from '../../components/ProgressLoading';
 import { InfoTooltip } from '../../components/InfoTooltip';
+import { TransferModal } from '../../components/TransferModal';
 import api from '../../lib/api';
 
 export default function WalletsPage() {
@@ -33,16 +37,20 @@ export default function WalletsPage() {
   const { accounts, monthlyAccounts, month, year, refreshData, loading: financeLoading } = useFinance();
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
   const [walletName, setWalletName] = useState('');
   const [walletType, setWalletType] = useState<'CASH' | 'MOBILE_WALLET' | 'BANK' | 'SAVINGS'>('MOBILE_WALLET');
+  const [walletRole, setWalletRole] = useState<'DAILY_SPENDING' | 'RESERVE' | 'SAVINGS_HOLDING'>('DAILY_SPENDING');
   const [initialBalance, setInitialBalance] = useState('');
   const [budgetLimit, setBudgetLimit] = useState('');
   const [loading, setLoading] = useState(false);
+  const [recentTransfers, setRecentTransfers] = useState<any[]>([]);
 
   // Edit Wallet State
   const [editingAccount, setEditingAccount] = useState<any | null>(null);
   const [editName, setEditName] = useState('');
   const [editType, setEditType] = useState<'CASH' | 'MOBILE_WALLET' | 'BANK' | 'SAVINGS'>('MOBILE_WALLET');
+  const [editRole, setEditRole] = useState<'DAILY_SPENDING' | 'RESERVE' | 'SAVINGS_HOLDING'>('DAILY_SPENDING');
   const [editBalance, setEditBalance] = useState('');
   const [editBudgetLimit, setEditBudgetLimit] = useState('');
   const [editLoading, setEditLoading] = useState(false);
@@ -62,6 +70,30 @@ export default function WalletsPage() {
     }
   }, [user, authLoading, router]);
 
+  const loadTransfers = async () => {
+    if (!user) return;
+    try {
+      const res = await api.get(`/transactions?month=${month}&year=${year}&type=TRANSFER`);
+      setRecentTransfers(res.data || []);
+    } catch (err) {
+      console.error('Failed to load transfers:', err);
+    }
+  };
+
+  useEffect(() => {
+    if (user) loadTransfers();
+  }, [user, month, year]);
+
+  const handleDeleteTransfer = async (id: string) => {
+    if (!confirm('Delete this transfer? Both wallets will revert cleanly.')) return;
+    try {
+      await api.delete(`/transactions/${id}`);
+      await Promise.all([refreshData(), loadTransfers()]);
+    } catch (err) {
+      alert('Failed to delete transfer.');
+    }
+  };
+
   const handleCreateWallet = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!walletName.trim()) return;
@@ -72,6 +104,7 @@ export default function WalletsPage() {
       await api.post('/accounts', {
         name: walletName.trim(),
         type: walletType,
+        role: walletRole,
         balance: parseFloat(initialBalance.replace(/,/g, '')) || 0,
         budgetLimit: budgetValue && budgetValue > 0 ? budgetValue : null,
         month,
@@ -115,6 +148,7 @@ export default function WalletsPage() {
     setEditingAccount(acc);
     setEditName(acc.name);
     setEditType(acc.type);
+    setEditRole(acc.role || (acc.type === 'BANK' ? 'RESERVE' : acc.type === 'SAVINGS' ? 'SAVINGS_HOLDING' : 'DAILY_SPENDING'));
     setEditBalance(String(acc.startingBalance ?? acc.balance ?? 0));
     setEditBudgetLimit(acc.budgetLimit ? String(acc.budgetLimit) : '');
   };
@@ -131,6 +165,7 @@ export default function WalletsPage() {
       await api.put(`/accounts/${editingAccount.id}`, {
         name: editName.trim(),
         type: editType,
+        role: editRole,
         balance: parsedBalance,
         budgetLimit: budgetValue && budgetValue > 0 ? budgetValue : null,
         month,
@@ -196,17 +231,23 @@ export default function WalletsPage() {
   const monthLabel = MONTHS.find(m => m.value === month)?.label || '';
 
   // Merge accounts with monthly summary data (ensures wallets show immediately)
-  const displayAccounts = (accounts.length > 0 ? accounts : monthlyAccounts).map((acc) => {
+  const displayAccounts = (monthlyAccounts.length > 0 ? monthlyAccounts : accounts).map((acc) => {
     const monthly = monthlyAccounts.find((m) => m.id === acc.id);
     return {
       id: acc.id,
       name: acc.name,
       type: acc.type,
+      role: acc.role || monthly?.role || (acc.type === 'BANK' ? 'RESERVE' : acc.type === 'SAVINGS' ? 'SAVINGS_HOLDING' : 'DAILY_SPENDING'),
       startingBalance: acc.startingBalance !== undefined ? Number(acc.startingBalance) : (monthly?.startingBalance !== undefined ? Number(monthly.startingBalance) : undefined),
+      isCarriedOver: acc.isCarriedOver ?? monthly?.isCarriedOver ?? false,
       balance: Number(acc.balance) || 0,
+      earmarkedSavings: Number(acc.earmarkedSavings ?? monthly?.earmarkedSavings ?? 0),
+      availableBalance: Number(acc.availableBalance ?? monthly?.availableBalance ?? acc.balance ?? 0),
       budgetLimit: acc.budgetLimit ? Number(acc.budgetLimit) : null,
       monthlyIncome: monthly?.monthlyIncome ?? 0,
       monthlyExpense: monthly?.monthlyExpense ?? 0,
+      monthlyTransfersIn: monthly?.monthlyTransfersIn ?? 0,
+      monthlyTransfersOut: monthly?.monthlyTransfersOut ?? 0,
       monthlyNet: monthly?.monthlyNet ?? 0,
     };
   });
@@ -234,7 +275,16 @@ export default function WalletsPage() {
           </div>
         </div>
 
-        <div className="flex items-center space-x-2.5">
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={() => setIsTransferModalOpen(true)}
+            disabled={displayAccounts.length < 2}
+            title="Transfer funds between KPay, Cash, KBZ Bank, or AYA Bank"
+            className="py-2.5 px-3.5 bg-sky-600 hover:bg-sky-700 text-white font-semibold rounded-xl text-sm shadow-md shadow-sky-600/20 transition-all flex items-center space-x-2 disabled:opacity-50"
+          >
+            <ArrowLeftRight className="w-4 h-4" />
+            <span>Transfer Money</span>
+          </button>
           <button
             onClick={() => setIsResetModalOpen(true)}
             disabled={isResettingAll || displayAccounts.length === 0}
@@ -242,14 +292,14 @@ export default function WalletsPage() {
             className="py-2.5 px-3.5 bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold rounded-xl text-sm shadow-sm transition-all flex items-center space-x-2 disabled:opacity-50"
           >
             <RotateCcw className={`w-4 h-4 ${isResettingAll ? 'animate-spin text-teal-600' : 'text-slate-500 dark:text-slate-400'}`} />
-            <span>Reset for New Month</span>
+            <span className="hidden sm:inline">Reset Month</span>
           </button>
           <button
             onClick={() => setIsAddModalOpen(true)}
             className="py-2.5 px-4 bg-teal-600 hover:bg-teal-700 text-white font-semibold rounded-xl text-sm shadow-lg shadow-teal-600/20 transition-all flex items-center space-x-2"
           >
             <Plus className="w-4 h-4" />
-            <span>Add New Account</span>
+            <span>Add Account</span>
           </button>
         </div>
       </div>
@@ -305,7 +355,12 @@ export default function WalletsPage() {
                     <Icon className="w-5 h-5 text-white" />
                   </div>
                   <div>
-                    <h3 className="text-base font-bold text-white">{acc.name}</h3>
+                    <div className="flex items-center space-x-2">
+                      <h3 className="text-base font-bold text-white">{acc.name}</h3>
+                      <span className="px-2 py-0.5 rounded-full bg-white/20 text-[10px] font-bold text-white uppercase tracking-wider">
+                        {acc.role === 'RESERVE' ? 'Reserve' : acc.role === 'SAVINGS_HOLDING' ? 'Savings Hold' : 'Daily'}
+                      </span>
+                    </div>
                     <span className="text-xs font-medium text-white/70 uppercase tracking-wider">
                       {acc.type.replace('_', ' ')}
                     </span>
@@ -332,19 +387,37 @@ export default function WalletsPage() {
               </div>
 
               <div className="p-6 space-y-4">
-                {/* Overall Balance (Single Clean Display - Edit function is in the header) */}
+                {/* Overall Balance & Auto-Carryover */}
                 <div>
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between gap-2">
                     <span className="text-xs text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wider">Overall Balance</span>
-                    {acc.startingBalance !== undefined && acc.startingBalance > 0 && acc.monthlyExpense > 0 && (
-                      <span className="text-[11px] font-medium text-slate-400 dark:text-slate-500">
-                        Initial: {formatMMK(acc.startingBalance)}
-                      </span>
-                    )}
+                    <div className="flex items-center space-x-1.5">
+                      {acc.isCarriedOver && (
+                        <span className="inline-flex items-center space-x-1 px-1.5 py-0.5 rounded bg-teal-50 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300 text-[10px] font-semibold">
+                          <Sparkles className="w-2.5 h-2.5" />
+                          <span>Auto-Carried</span>
+                        </span>
+                      )}
+                      {acc.startingBalance !== undefined && (
+                        <span className="text-[11px] font-medium text-slate-400 dark:text-slate-500">
+                          Start: {formatMMK(acc.startingBalance)}
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <div className="text-2xl font-black text-slate-900 dark:text-slate-100 mt-0.5">
                     {formatMMK(acc.balance)}
                   </div>
+                  {acc.earmarkedSavings > 0 && (
+                    <div className="mt-1.5 flex items-center justify-between text-[11px] bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-900/40 rounded-lg px-2.5 py-1">
+                      <span className="text-emerald-700 dark:text-emerald-300 font-medium">
+                        Earmarked: {formatMMK(acc.earmarkedSavings)}
+                      </span>
+                      <span className="text-slate-700 dark:text-slate-200 font-bold">
+                        Free: {formatMMK(acc.availableBalance)}
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Monthly Breakdown */}
@@ -369,6 +442,16 @@ export default function WalletsPage() {
                       </div>
                     </div>
                   </div>
+                  {(acc.monthlyTransfersIn > 0 || acc.monthlyTransfersOut > 0) && (
+                    <div className="pt-1.5 border-t border-slate-200/70 dark:border-slate-700/60 flex items-center justify-between text-[11px] font-semibold">
+                      <span className="text-sky-600 dark:text-sky-400">
+                        Transfers In: +{formatMMK(acc.monthlyTransfersIn)}
+                      </span>
+                      <span className="text-amber-600 dark:text-amber-400">
+                        Out: -{formatMMK(acc.monthlyTransfersOut)}
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Budget Usage Bar */}
@@ -405,6 +488,63 @@ export default function WalletsPage() {
         <div className="text-center py-16 text-slate-400 dark:text-slate-500">
           <Wallet className="w-12 h-12 mx-auto mb-3 opacity-30" />
           <p className="text-sm font-medium">No accounts yet. Add your first wallet to get started.</p>
+        </div>
+      )}
+
+      {/* Recent Transfers & Family Exchanges Ledger */}
+      {recentTransfers.length > 0 && (
+        <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden">
+          <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <ArrowLeftRight className="w-4 h-4 text-sky-600 dark:text-sky-400" />
+              <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">
+                {monthLabel} {year} Transfers &amp; Exchanges
+              </h2>
+            </div>
+            <span className="text-xs text-slate-400 dark:text-slate-500">
+              Excluded from Expenses &amp; Budgets
+            </span>
+          </div>
+          <div className="divide-y divide-slate-100 dark:divide-slate-800">
+            {recentTransfers.map((tr) => (
+              <div key={tr.id} className="px-6 py-3.5 flex items-center justify-between hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors">
+                <div className="flex items-center space-x-3">
+                  <div className="w-9 h-9 rounded-xl bg-sky-50 dark:bg-sky-950/60 text-sky-600 dark:text-sky-400 flex items-center justify-center">
+                    <ArrowLeftRight className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="text-sm font-semibold text-slate-900 dark:text-slate-100 flex flex-wrap items-center gap-2">
+                      <span>{tr.account?.name} → {tr.toAccount?.name || 'Wallet'}</span>
+                      {tr.transferTag && (
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
+                          tr.transferTag === 'RESERVE_DRAW'
+                            ? 'bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300'
+                            : 'bg-sky-100 dark:bg-sky-950/60 text-sky-700 dark:text-sky-300'
+                        }`}>
+                          {tr.transferTag.replace(/_/g, ' ')}
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-xs text-slate-400 dark:text-slate-500">
+                      {tr.description || 'Internal Transfer'} • {new Date(tr.date).toLocaleDateString()}
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center space-x-3">
+                  <span className="text-sm font-bold text-sky-600 dark:text-sky-400">
+                    {formatMMK(tr.amount)}
+                  </span>
+                  <button
+                    onClick={() => handleDeleteTransfer(tr.id)}
+                    title="Delete transfer and revert balances"
+                    className="p-1.5 text-slate-400 hover:text-rose-500 rounded-lg transition-colors"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
@@ -451,13 +591,32 @@ export default function WalletsPage() {
                 </label>
                 <select
                   value={walletType}
-                  onChange={(e) => setWalletType(e.target.value as any)}
+                  onChange={(e) => {
+                    const nextType = e.target.value as any;
+                    setWalletType(nextType);
+                    setWalletRole(nextType === 'BANK' ? 'RESERVE' : nextType === 'SAVINGS' ? 'SAVINGS_HOLDING' : 'DAILY_SPENDING');
+                  }}
                   className="w-full text-sm font-medium px-3 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-teal-500 focus:outline-none"
                 >
                   <option value="CASH" className="dark:bg-slate-900">Cash in Hand</option>
                   <option value="MOBILE_WALLET" className="dark:bg-slate-900">Mobile Wallet (Kpay, Wave)</option>
                   <option value="BANK" className="dark:bg-slate-900">Bank Checking Account</option>
                   <option value="SAVINGS" className="dark:bg-slate-900">Savings Account</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
+                  Coaching Role
+                </label>
+                <select
+                  value={walletRole}
+                  onChange={(e) => setWalletRole(e.target.value as any)}
+                  className="w-full text-sm font-medium px-3 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                >
+                  <option value="DAILY_SPENDING" className="dark:bg-slate-900">Daily Spending (KPay, Everyday Cash)</option>
+                  <option value="RESERVE" className="dark:bg-slate-900">Bank Reserve / Vault (KBZ Bank)</option>
+                  <option value="SAVINGS_HOLDING" className="dark:bg-slate-900">Savings Holding (AYA Bank, Wardrobe Cash)</option>
                 </select>
               </div>
 
@@ -566,6 +725,21 @@ export default function WalletsPage() {
                   <option value="MOBILE_WALLET" className="dark:bg-slate-900">Mobile Wallet (Kpay, Wave)</option>
                   <option value="BANK" className="dark:bg-slate-900">Bank Checking Account</option>
                   <option value="SAVINGS" className="dark:bg-slate-900">Savings Account</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
+                  Coaching Role
+                </label>
+                <select
+                  value={editRole}
+                  onChange={(e) => setEditRole(e.target.value as any)}
+                  className="w-full text-sm font-medium px-3 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                >
+                  <option value="DAILY_SPENDING" className="dark:bg-slate-900">Daily Spending (KPay, Everyday Cash)</option>
+                  <option value="RESERVE" className="dark:bg-slate-900">Bank Reserve / Vault (KBZ Bank)</option>
+                  <option value="SAVINGS_HOLDING" className="dark:bg-slate-900">Savings Holding (AYA Bank, Wardrobe Cash)</option>
                 </select>
               </div>
 
@@ -765,6 +939,14 @@ export default function WalletsPage() {
         </div>,
         document.body
       )}
+
+      <TransferModal
+        isOpen={isTransferModalOpen}
+        onClose={() => setIsTransferModalOpen(false)}
+        onSuccess={() => {
+          loadTransfers();
+        }}
+      />
     </div>
   );
 }

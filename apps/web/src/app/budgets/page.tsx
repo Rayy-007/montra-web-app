@@ -20,7 +20,9 @@ import {
   Search,
   ArrowUp,
   ArrowDown,
-  ArrowUpDown
+  ArrowUpDown,
+  ShieldAlert,
+  PiggyBank
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useFinance } from '../../context/FinancialContext';
@@ -52,6 +54,7 @@ export default function BudgetsPage() {
   const { 
     month, 
     year, 
+    insights,
     refreshData, 
     categories: allCategories,
     getCachedBudgets,
@@ -318,6 +321,43 @@ export default function BudgetsPage() {
           </div>
         </div>
       </div>
+
+      {/* Finance Coach: Reserve Draw & Savings Separation Callout */}
+      {(insights?.coachMetrics?.totalReserveDraws || 0) > 0 || budgetData.summary.totalRemainingDiff < 0 ? (
+        <div className="bg-amber-50/90 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/60 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-start space-x-3 text-xs sm:text-sm text-amber-900 dark:text-amber-200">
+            <ShieldAlert className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+            <div>
+              <div className="font-bold">Budget &amp; Bank Reserve Check</div>
+              <p className="text-xs text-amber-800/90 dark:text-amber-300/90 mt-0.5">
+                {budgetData.summary.totalRemainingDiff < 0 && (
+                  <>You have exceeded your planned monthly budget by <strong>{formatMMK(Math.abs(budgetData.summary.totalRemainingDiff))}</strong>. </>
+                )}
+                {(insights?.coachMetrics?.totalReserveDraws || 0) > 0 && (
+                  <>You pulled <strong>{formatMMK(insights?.coachMetrics?.totalReserveDraws || 0)}</strong> extra from your Bank Reserve into Daily Wallets this month.</>
+                )}
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => router.push('/savings')}
+            className="px-3 py-2 bg-white dark:bg-slate-900 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-300 rounded-xl text-xs font-bold flex items-center space-x-1.5 self-start sm:self-center flex-shrink-0 hover:bg-amber-100/60 dark:hover:bg-amber-900/40 transition-colors"
+          >
+            <PiggyBank className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+            <span>Open Savings Goals</span>
+          </button>
+        </div>
+      ) : (
+        <div className="bg-indigo-50/60 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/40 rounded-2xl px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-indigo-800 dark:text-indigo-300">
+          <span>
+            <strong>Coach Tip:</strong> Keep this page strictly for real spending limits. Track Laptop &amp; General Savings on the{' '}
+            <button onClick={() => router.push('/savings')} className="underline font-bold hover:text-indigo-600">
+              Savings Goals
+            </button>{' '}
+            page so saving never inflates your expenses.
+          </span>
+        </div>
+      )}
 
       {/* Budget Matrix Table with Filter & Sort Toolbar */}
       <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden transition-colors">

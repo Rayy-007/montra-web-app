@@ -2,6 +2,7 @@ import { Router, Response } from 'express';
 import { z } from 'zod';
 import prisma from '../../prisma';
 import { authenticateJwt, AuthRequest } from '../../middleware/auth';
+import { computeMonthlyAccountsAndCoachMetrics } from '../../lib/monthlyBalances';
 
 const router = Router();
 router.use(authenticateJwt);
@@ -9,9 +10,16 @@ router.use(authenticateJwt);
 const accountSchema = z.object({
   name: z.string().min(1),
   type: z.enum(['CASH', 'MOBILE_WALLET', 'BANK', 'SAVINGS']),
+  role: z.enum(['DAILY_SPENDING', 'RESERVE', 'SAVINGS_HOLDING']).optional(),
   balance: z.number().default(0),
-  budgetLimit: z.number().optional().nullable()
+  budgetLimit: z.number().optional().nullable(),
 });
+
+function inferDefaultRole(type: 'CASH' | 'MOBILE_WALLET' | 'BANK' | 'SAVINGS') {
+  if (type === 'BANK') return 'RESERVE';
+  if (type === 'SAVINGS') return 'SAVINGS_HOLDING';
+  return 'DAILY_SPENDING';
+}
 
 // GET all accounts
 router.get('/', async (req: AuthRequest, res: Response) => {
@@ -19,7 +27,7 @@ router.get('/', async (req: AuthRequest, res: Response) => {
     const userId = req.user!.id;
     const accounts = await prisma.account.findMany({
       where: { userId },
-      orderBy: { createdAt: 'asc' }
+      orderBy: { createdAt: 'asc' },
     });
 
     res.json(accounts);
@@ -28,81 +36,15 @@ router.get('/', async (req: AuthRequest, res: Response) => {
   }
 });
 
-// GET accounts with monthly transaction summaries
+// GET accounts with monthly transaction summaries (supports auto-carryover & transfers)
 router.get('/monthly', async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user!.id;
     const month = parseInt(String(req.query.month || new Date().getMonth() + 1), 10);
     const year = parseInt(String(req.query.year || new Date().getFullYear()), 10);
 
-    const startDate = new Date(year, month - 1, 1);
-    const endDate = new Date(year, month, 0, 23, 59, 59, 999);
-
-    // Fetch accounts, aggregated transaction totals, and month-specific balances in parallel
-    const [accounts, transactionTotals, monthlyBalances] = await Promise.all([
-      prisma.account.findMany({
-        where: { userId },
-        orderBy: { createdAt: 'asc' }
-      }),
-      prisma.transaction.groupBy({
-        by: ['accountId', 'type'],
-        where: {
-          userId,
-          date: { gte: startDate, lte: endDate }
-        },
-        _sum: { amount: true }
-      }),
-      prisma.$queryRawUnsafe<any[]>(`
-        SELECT "accountId", "balance"
-        FROM "AccountMonthlyBalance"
-        WHERE "userId" = $1 AND "month" = $2 AND "year" = $3
-      `, userId, month, year).catch(() => [])
-    ]);
-
-    const incomeMap = new Map<string, number>();
-    const expenseMap = new Map<string, number>();
-
-    transactionTotals.forEach((group) => {
-      const amount = Number(group._sum.amount || 0);
-      if (group.type === 'INCOME') {
-        incomeMap.set(group.accountId, (incomeMap.get(group.accountId) || 0) + amount);
-      } else if (group.type === 'EXPENSE') {
-        expenseMap.set(group.accountId, (expenseMap.get(group.accountId) || 0) + amount);
-      }
-    });
-
-    const monthlyBalanceMap = new Map<string, number>();
-    monthlyBalances.forEach((row) => {
-      monthlyBalanceMap.set(row.accountId, Number(row.balance || 0));
-    });
-
-    const accountSummaries = accounts.map((account) => {
-      const monthlyIncome = incomeMap.get(account.id) || 0;
-      const monthlyExpense = expenseMap.get(account.id) || 0;
-
-      // Respective month's balance:
-      // If balance exists for this month, use it as starting balance. For uncreated / future months, reset to 0.
-      const startingBalance = monthlyBalanceMap.has(account.id)
-        ? (monthlyBalanceMap.get(account.id) || 0)
-        : 0;
-
-      // Overall balance reducing based on expense and increasing based on income:
-      const balance = startingBalance + monthlyIncome - monthlyExpense;
-
-      return {
-        id: account.id,
-        name: account.name,
-        type: account.type,
-        startingBalance,
-        balance,
-        budgetLimit: account.budgetLimit ? Number(account.budgetLimit) : null,
-        monthlyIncome,
-        monthlyExpense,
-        monthlyNet: monthlyIncome - monthlyExpense,
-      };
-    });
-
-    res.json(accountSummaries);
+    const { accounts } = await computeMonthlyAccountsAndCoachMetrics(userId, month, year);
+    res.json(accounts);
   } catch (error: any) {
     res.status(500).json({ message: 'Failed to fetch monthly account data', error: error.message });
   }
@@ -119,15 +61,17 @@ router.post('/', async (req: AuthRequest, res: Response) => {
 
     const month = parseInt(String(req.body.month || new Date().getMonth() + 1), 10);
     const year = parseInt(String(req.body.year || new Date().getFullYear()), 10);
+    const role = parsed.data.role || inferDefaultRole(parsed.data.type);
 
     const account = await prisma.account.create({
       data: {
         userId,
         name: parsed.data.name,
         type: parsed.data.type,
+        role,
         balance: parsed.data.balance,
-        budgetLimit: parsed.data.budgetLimit
-      }
+        budgetLimit: parsed.data.budgetLimit,
+      },
     });
 
     // Record initial balance for the current active month
@@ -158,14 +102,14 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
 
     const updated = await prisma.account.updateMany({
       where: { id, userId },
-      data: parsed.data
+      data: parsed.data,
     });
 
     if (updated.count === 0) {
       return res.status(404).json({ message: 'Account not found' });
     }
 
-    // Update month-specific balance if balance is provided
+    // Update month-specific balance if balance is provided (acts as explicit override for that month)
     if (parsed.data.balance !== undefined) {
       const month = parseInt(String(req.body.month || req.query.month || new Date().getMonth() + 1), 10);
       const year = parseInt(String(req.body.year || req.query.year || new Date().getFullYear()), 10);
@@ -194,7 +138,7 @@ router.delete('/:id', async (req: AuthRequest, res: Response) => {
     const { id } = req.params;
 
     const account = await prisma.account.findFirst({
-      where: { id, userId }
+      where: { id, userId },
     });
 
     if (!account) {
@@ -207,11 +151,11 @@ router.delete('/:id', async (req: AuthRequest, res: Response) => {
     `, id).catch(() => {});
 
     await prisma.transaction.deleteMany({
-      where: { accountId: id, userId }
+      where: { OR: [{ accountId: id }, { toAccountId: id }], userId },
     });
 
     await prisma.account.delete({
-      where: { id }
+      where: { id },
     });
 
     res.json({ message: 'Account deleted successfully' });
@@ -221,7 +165,7 @@ router.delete('/:id', async (req: AuthRequest, res: Response) => {
   }
 });
 
-// POST reset all account balances to 0 for a specific month (keeps old history for other months!)
+// POST reset all account balances to 0 for a specific month
 router.post('/reset', async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user!.id;

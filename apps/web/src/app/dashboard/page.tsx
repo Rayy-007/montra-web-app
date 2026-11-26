@@ -13,13 +13,18 @@ import {
   PieChart as PieChartIcon,
   ChevronRight,
   Clock,
-  Download
+  Download,
+  ArrowLeftRight,
+  ShieldAlert,
+  PiggyBank,
+  Landmark
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useFinance } from '../../context/FinancialContext';
 import { formatMMK, MONTHS } from '../../lib/utils';
 import { AddExpenseModal } from '../../components/AddExpenseModal';
 import { AddIncomeModal } from '../../components/AddIncomeModal';
+import { TransferModal } from '../../components/TransferModal';
 import { MonthlySummaryModal } from '../../components/MonthlySummaryModal';
 import { ProgressLoading } from '../../components/ProgressLoading';
 import { InfoTooltip } from '../../components/InfoTooltip';
@@ -32,6 +37,7 @@ export default function DashboardPage() {
 
   const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
   const [isIncomeModalOpen, setIsIncomeModalOpen] = useState(false);
+  const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
   const [isSummaryModalOpen, setIsSummaryModalOpen] = useState(false);
   const [recentTransactions, setRecentTransactions] = useState<any[]>([]);
 
@@ -102,6 +108,15 @@ export default function DashboardPage() {
           >
             <Download className="w-4 h-4" />
             <span>Summary (PDF)</span>
+          </button>
+
+          <button
+            onClick={() => setIsTransferModalOpen(true)}
+            title="Transfer between wallets (e.g. KBZ -> KPay, Family Exchange)"
+            className="flex-1 sm:flex-initial py-2.5 px-3.5 bg-sky-50 dark:bg-sky-950/60 hover:bg-sky-100 dark:hover:bg-sky-900/60 text-sky-700 dark:text-sky-300 border border-sky-200 dark:border-sky-800 font-semibold rounded-xl text-sm shadow-sm transition-all duration-200 flex items-center justify-center space-x-1.5 cursor-pointer"
+          >
+            <ArrowLeftRight className="w-4 h-4" />
+            <span>Transfer</span>
           </button>
 
           <button
@@ -197,6 +212,132 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      {/* Finance Coach & Reserve Control Ribbon */}
+      {insights?.coachMetrics && (
+        <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4 transition-colors">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100 dark:border-slate-800">
+            <div className="flex items-center space-x-2">
+              <Sparkles className="w-4 h-4 text-amber-500" />
+              <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">Finance Coach &amp; Reserve Control</h2>
+            </div>
+            <div className="flex items-center space-x-3 text-xs font-semibold">
+              <button
+                onClick={() => router.push('/savings')}
+                className="text-emerald-600 dark:text-emerald-400 hover:underline flex items-center space-x-1"
+              >
+                <PiggyBank className="w-3.5 h-3.5" />
+                <span>Manage Savings Goals</span>
+              </button>
+              <span className="text-slate-300 dark:text-slate-700">•</span>
+              <button
+                onClick={() => setIsTransferModalOpen(true)}
+                className="text-sky-600 dark:text-sky-400 hover:underline flex items-center space-x-1"
+              >
+                <ArrowLeftRight className="w-3.5 h-3.5" />
+                <span>Log Wallet Transfer</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800">
+              <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                Daily Spending Pool
+              </div>
+              <div className="text-lg font-black text-slate-900 dark:text-slate-100 mt-1">
+                {formatMMK(insights.coachMetrics.dailySpendingBalance)}
+              </div>
+              <div className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">
+                Available in KPay &amp; Cash
+              </div>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-indigo-50/60 dark:bg-indigo-950/30 border border-indigo-100 dark:border-indigo-900/50">
+              <div className="text-[11px] font-semibold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 flex items-center space-x-1">
+                <Landmark className="w-3.5 h-3.5" />
+                <span>Bank Reserve</span>
+              </div>
+              <div className="text-lg font-black text-indigo-700 dark:text-indigo-300 mt-1">
+                {formatMMK(insights.coachMetrics.reserveBalance)}
+              </div>
+              <div className="text-[11px] text-indigo-500/80 dark:text-indigo-400/70 mt-0.5">
+                Protected vault balance
+              </div>
+            </div>
+
+            <div
+              onClick={() => router.push('/savings')}
+              className="p-4 rounded-2xl bg-emerald-50/60 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-900/50 cursor-pointer hover:border-emerald-300 dark:hover:border-emerald-700 transition-colors"
+            >
+              <div className="text-[11px] font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 flex items-center space-x-1">
+                <PiggyBank className="w-3.5 h-3.5" />
+                <span>Earmarked Savings</span>
+              </div>
+              <div className="text-lg font-black text-emerald-700 dark:text-emerald-300 mt-1">
+                {formatMMK(insights.coachMetrics.totalEarmarkedSavings)}
+              </div>
+              <div className="text-[11px] text-emerald-600/80 dark:text-emerald-400/70 mt-0.5">
+                +{formatMMK(insights.coachMetrics.totalSavedThisMonth)} saved in {currentMonthName}
+              </div>
+            </div>
+
+            <div
+              className={`p-4 rounded-2xl border ${
+                insights.coachMetrics.totalReserveDraws > 0 || insights.coachMetrics.budgetOverrun > 0
+                  ? 'bg-amber-50/80 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800/60'
+                  : 'bg-slate-50 dark:bg-slate-800/60 border-slate-100 dark:border-slate-800'
+              }`}
+            >
+              <div
+                className={`text-[11px] font-semibold uppercase tracking-wider flex items-center space-x-1 ${
+                  insights.coachMetrics.totalReserveDraws > 0 || insights.coachMetrics.budgetOverrun > 0
+                    ? 'text-amber-700 dark:text-amber-400'
+                    : 'text-slate-500 dark:text-slate-400'
+                }`}
+              >
+                <ShieldAlert className="w-3.5 h-3.5" />
+                <span>Pulled From Reserve</span>
+              </div>
+              <div
+                className={`text-lg font-black mt-1 ${
+                  insights.coachMetrics.totalReserveDraws > 0
+                    ? 'text-amber-700 dark:text-amber-300'
+                    : 'text-slate-900 dark:text-slate-100'
+                }`}
+              >
+                {formatMMK(insights.coachMetrics.totalReserveDraws)}
+              </div>
+              <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                {insights.coachMetrics.budgetOverrun > 0
+                  ? `Over budget by ${formatMMK(insights.coachMetrics.budgetOverrun)}`
+                  : 'Reserve → Daily top-ups'}
+              </div>
+            </div>
+          </div>
+
+          {insights.coachMetrics.reserveDrawItems && insights.coachMetrics.reserveDrawItems.length > 0 && (
+            <div className="p-3.5 rounded-2xl bg-amber-50/70 dark:bg-amber-950/20 border border-amber-200/80 dark:border-amber-800/50 space-y-2">
+              <div className="text-xs font-bold text-amber-800 dark:text-amber-300 flex items-center space-x-1.5">
+                <ShieldAlert className="w-4 h-4 flex-shrink-0" />
+                <span>Reserve Draw Log ({currentMonthName} {year}): Extra funds moved from Reserve to Daily Spending</span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {insights.coachMetrics.reserveDrawItems.slice(0, 4).map((item) => (
+                  <span
+                    key={item.id}
+                    className="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-lg bg-white dark:bg-slate-900 border border-amber-200/80 dark:border-amber-800/60 text-[11px] font-semibold text-slate-700 dark:text-slate-200"
+                  >
+                    <span>{item.fromAccountName} → {item.toAccountName}:</span>
+                    <span className="text-amber-700 dark:text-amber-400 font-bold">{formatMMK(item.amount)}</span>
+                    <span className="text-slate-400">({new Date(item.date).toLocaleDateString()})</span>
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Two Column Layout: Category Spending Breakdown & Recent Activity */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Category Spending Breakdown */}
@@ -267,26 +408,48 @@ export default function DashboardPage() {
             <div className="divide-y divide-slate-100 dark:divide-slate-800">
               {recentTransactions.map((tx) => {
                 const isIncome = tx.type === 'INCOME';
+                const isTransfer = tx.type === 'TRANSFER';
                 return (
                   <div key={tx.id} className="py-3 flex items-center justify-between">
                     <div className="flex items-center space-x-3">
-                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-sm font-bold ${isIncome ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400' : 'bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400'
-                        }`}>
-                        {isIncome ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownRight className="w-4 h-4" />}
+                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-sm font-bold ${
+                        isTransfer
+                          ? 'bg-sky-50 dark:bg-sky-950/60 text-sky-600 dark:text-sky-400'
+                          : isIncome
+                          ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400'
+                          : 'bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400'
+                      }`}>
+                        {isTransfer ? (
+                          <ArrowLeftRight className="w-4 h-4" />
+                        ) : isIncome ? (
+                          <ArrowUpRight className="w-4 h-4" />
+                        ) : (
+                          <ArrowDownRight className="w-4 h-4" />
+                        )}
                       </div>
                       <div>
                         <div className="text-xs sm:text-sm font-semibold text-slate-900 dark:text-slate-100">
-                          {tx.category?.name || (isIncome ? 'Income' : 'Expense')}
+                          {isTransfer
+                            ? `${tx.account?.name} → ${tx.toAccount?.name || 'Wallet'}`
+                            : tx.category?.name || (isIncome ? 'Income' : 'Expense')}
                         </div>
                         <div className="text-xs text-slate-400 dark:text-slate-500">
-                          {tx.account?.name} • {new Date(tx.date).toLocaleDateString()}
+                          {isTransfer
+                            ? `${(tx.transferTag || 'TRANSFER').replace(/_/g, ' ')}`
+                            : tx.account?.name}{' '}
+                          • {new Date(tx.date).toLocaleDateString()}
                         </div>
                       </div>
                     </div>
 
-                    <div className={`text-xs sm:text-sm font-bold ${isIncome ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-900 dark:text-slate-100'
-                      }`}>
-                      {isIncome ? '+' : '-'}{formatMMK(tx.amount)}
+                    <div className={`text-xs sm:text-sm font-bold ${
+                      isTransfer
+                        ? 'text-sky-600 dark:text-sky-400'
+                        : isIncome
+                        ? 'text-emerald-600 dark:text-emerald-400'
+                        : 'text-slate-900 dark:text-slate-100'
+                    }`}>
+                      {isTransfer ? '' : isIncome ? '+' : '-'}{formatMMK(tx.amount)}
                     </div>
                   </div>
                 );
@@ -325,6 +488,11 @@ export default function DashboardPage() {
               : acc.type === 'BANK' ? 'Bank Account'
                 : acc.type === 'SAVINGS' ? 'Savings'
                   : 'Cash';
+            const roleBadge = acc.role === 'RESERVE'
+              ? { label: 'Reserve', cls: 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300' }
+              : acc.role === 'SAVINGS_HOLDING'
+              ? { label: 'Savings Hold', cls: 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300' }
+              : { label: 'Daily', cls: 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300' };
             return (
               <div
                 key={acc.id}
@@ -334,12 +502,22 @@ export default function DashboardPage() {
                   <span className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
                     {typeLabel}
                   </span>
-                  <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${roleBadge.cls}`}>
+                    {roleBadge.label}
+                  </span>
                 </div>
                 <div className="text-base font-bold text-slate-900 dark:text-slate-100">{acc.name}</div>
                 <div className="text-xl font-black text-emerald-600 dark:text-emerald-400 mt-1">
                   {formatMMK(acc.balance)}
                 </div>
+                {(acc.earmarkedSavings || 0) > 0 && (
+                  <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-2 pt-2 border-t border-slate-100 dark:border-slate-800 flex justify-between">
+                    <span>Savings Earmarked:</span>
+                    <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+                      {formatMMK(acc.earmarkedSavings || 0)}
+                    </span>
+                  </div>
+                )}
                 {acc.budgetLimit && (
                   <div className="text-xs text-slate-500 dark:text-slate-400 mt-2 pt-2 border-t border-slate-100 dark:border-slate-800 flex justify-between">
                     <span>Monthly Limit:</span>
@@ -366,6 +544,16 @@ export default function DashboardPage() {
       <AddIncomeModal
         isOpen={isIncomeModalOpen}
         onClose={() => setIsIncomeModalOpen(false)}
+        onSuccess={() => {
+          refreshData();
+          api.get(`/transactions?month=${month}&year=${year}`)
+            .then((res) => setRecentTransactions(res.data.slice(0, 5)));
+        }}
+      />
+
+      <TransferModal
+        isOpen={isTransferModalOpen}
+        onClose={() => setIsTransferModalOpen(false)}
         onSuccess={() => {
           refreshData();
           api.get(`/transactions?month=${month}&year=${year}`)
