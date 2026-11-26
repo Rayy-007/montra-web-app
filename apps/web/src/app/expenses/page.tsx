@@ -28,8 +28,10 @@ import { AddExpenseModal } from '../../components/AddExpenseModal';
 import { EditExpenseModal } from '../../components/EditExpenseModal';
 import { ConfirmDeleteModal } from '../../components/ConfirmDeleteModal';
 import { CategoryBadge } from '../../components/CategoryIcon';
+import { WalletBadge } from '../../components/WalletBadge';
 import { ProgressLoading } from '../../components/ProgressLoading';
 import { InfoTooltip } from '../../components/InfoTooltip';
+import { useToast } from '../../context/ToastContext';
 import api from '../../lib/api';
 
 export default function ExpensesPage() {
@@ -55,6 +57,8 @@ export default function ExpensesPage() {
   const [deletingTxId, setDeletingTxId] = useState<string | null>(null);
   const [isDeletingTx, setIsDeletingTx] = useState(false);
   const [deleteTxError, setDeleteTxError] = useState<string | null>(null);
+  const [smashingTxId, setSmashingTxId] = useState<string | null>(null);
+  const { showToast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedWallet, setSelectedWallet] = useState<string>('ALL');
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
@@ -116,21 +120,25 @@ export default function ExpensesPage() {
     setIsDeletingTx(true);
     setDeleteTxError(null);
 
-    const previous = [...transactions];
-    const updated = transactions.filter((tx) => tx.id !== id);
-    setTransactions(updated);
-    setCachedExpenses(updated, month, year);
-
     try {
       await api.delete(`/transactions/${id}`);
       setDeletingTxId(null);
-      refreshData();
+      setIsDeletingTx(false);
+      setSmashingTxId(id);
+      showToast('Expense deleted & refunded to wallet', 'delete');
+
+      setTimeout(() => {
+        setTransactions((prev) => {
+          const updated = prev.filter((tx) => tx.id !== id);
+          setCachedExpenses(updated, month, year);
+          return updated;
+        });
+        setSmashingTxId(null);
+        refreshData();
+      }, 380);
     } catch (err: any) {
       console.error('Failed to delete transaction:', err);
-      setTransactions(previous);
-      setCachedExpenses(previous, month, year);
-      setDeleteTxError(err.response?.data?.message || 'Failed to delete expense. Restored.');
-    } finally {
+      setDeleteTxError(err.response?.data?.message || 'Failed to delete expense.');
       setIsDeletingTx(false);
     }
   };
@@ -513,7 +521,12 @@ export default function ExpensesPage() {
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                   {sortedTransactions.map((tx) => (
-                    <tr key={tx.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/50 transition-colors">
+                    <tr
+                      key={tx.id}
+                      className={`hover:bg-slate-50/60 dark:hover:bg-slate-800/50 transition-colors ${
+                        smashingTxId === tx.id ? 'animate-item-smash bg-rose-50/70 dark:bg-rose-950/30' : ''
+                      }`}
+                    >
                       <td className="px-6 py-4 text-xs font-medium text-slate-600 dark:text-slate-400 whitespace-nowrap">
                         {formatDateTime(tx.date)}
                       </td>
@@ -525,10 +538,12 @@ export default function ExpensesPage() {
                         />
                       </td>
                       <td className="px-6 py-4">
-                        <span className="inline-flex items-center space-x-1.5 text-xs font-bold text-slate-700 dark:text-slate-300">
-                          <Wallet className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
-                          <span>{tx.account?.name}</span>
-                        </span>
+                        <WalletBadge
+                          name={tx.account?.name}
+                          type={tx.account?.type}
+                          color={tx.account?.color}
+                          icon={tx.account?.icon}
+                        />
                       </td>
                       <td className="px-6 py-4 text-xs text-slate-500 dark:text-slate-400 max-w-xs truncate">
                         {tx.description || '-'}
@@ -566,7 +581,12 @@ export default function ExpensesPage() {
             {/* Mobile Card List View */}
             <div className="md:hidden divide-y divide-slate-100 dark:divide-slate-800">
               {sortedTransactions.map((tx) => (
-                <div key={tx.id} className="p-4 flex items-center justify-between gap-3">
+                <div
+                  key={tx.id}
+                  className={`p-4 flex items-center justify-between gap-3 ${
+                    smashingTxId === tx.id ? 'animate-item-smash bg-rose-50/70 dark:bg-rose-950/30' : ''
+                  }`}
+                >
                   <div className="space-y-1 min-w-0">
                     <div className="flex items-center space-x-2 flex-wrap gap-y-1">
                       <CategoryBadge
@@ -575,10 +595,13 @@ export default function ExpensesPage() {
                         color={tx.category?.color}
                         size="xs"
                       />
-                      <span className="inline-flex items-center space-x-1 text-[11px] font-medium text-slate-500 dark:text-slate-400">
-                        <Wallet className="w-3 h-3 text-slate-400" />
-                        <span>{tx.account?.name}</span>
-                      </span>
+                      <WalletBadge
+                        name={tx.account?.name}
+                        type={tx.account?.type}
+                        color={tx.account?.color}
+                        icon={tx.account?.icon}
+                        size="xs"
+                      />
                     </div>
                     {tx.description && (
                       <p className="text-xs text-slate-600 dark:text-slate-300 truncate">{tx.description}</p>

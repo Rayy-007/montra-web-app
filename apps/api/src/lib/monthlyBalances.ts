@@ -5,6 +5,8 @@ export interface ComputedMonthlyAccount {
   name: string;
   type: 'CASH' | 'MOBILE_WALLET' | 'BANK' | 'SAVINGS';
   role: 'DAILY_SPENDING' | 'RESERVE' | 'SAVINGS_HOLDING';
+  color: string | null;
+  icon: string | null;
   startingBalance: number;
   isCarriedOver: boolean;
   balance: number;
@@ -204,6 +206,8 @@ export async function computeMonthlyAccountsAndCoachMetrics(
       name: acc.name,
       type: acc.type as ComputedMonthlyAccount['type'],
       role: (acc.role || 'DAILY_SPENDING') as ComputedMonthlyAccount['role'],
+      color: acc.color || null,
+      icon: acc.icon || null,
       startingBalance,
       isCarriedOver,
       balance,

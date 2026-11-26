@@ -23,6 +23,7 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { useFinance } from '../context/FinancialContext';
 import { useTheme } from '../context/ThemeContext';
+import { useToast } from '../context/ToastContext';
 import { MONTHS } from '../lib/utils';
 import { Logo } from './Logo';
 import { MonthlySummaryModal } from './MonthlySummaryModal';
@@ -32,6 +33,7 @@ export const Navbar: React.FC = () => {
   const { user, logout } = useAuth();
   const { month, year, setMonth, setYear } = useFinance();
   const { resolvedTheme, toggleTheme } = useTheme();
+  const { showToast } = useToast();
 
   const [isPickerOpen, setIsPickerOpen] = useState(false);
   const [pickerYear, setPickerYear] = useState<number>(year);
@@ -60,28 +62,34 @@ export const Navbar: React.FC = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isPickerOpen]);
 
+  const notifyMonthChange = (m: number, y: number) => {
+    const label = MONTHS.find((item) => item.value === m)?.label || `Month ${m}`;
+    showToast(`Switched to ${label} ${y}`, 'info');
+  };
+
   const handlePrevMonth = () => {
-    if (month === 1) {
-      setMonth(12);
-      setYear(year - 1);
-    } else {
-      setMonth(month - 1);
-    }
+    const nextM = month === 1 ? 12 : month - 1;
+    const nextY = month === 1 ? year - 1 : year;
+    setMonth(nextM);
+    setYear(nextY);
+    notifyMonthChange(nextM, nextY);
   };
 
   const handleNextMonth = () => {
-    if (month === 12) {
-      setMonth(1);
-      setYear(year + 1);
-    } else {
-      setMonth(month + 1);
-    }
+    const nextM = month === 12 ? 1 : month + 1;
+    const nextY = month === 12 ? year + 1 : year;
+    setMonth(nextM);
+    setYear(nextY);
+    notifyMonthChange(nextM, nextY);
   };
 
   const handleSelectMonth = (selectedM: number) => {
     setMonth(selectedM);
     setYear(pickerYear);
     setIsPickerOpen(false);
+    if (selectedM !== month || pickerYear !== year) {
+      notifyMonthChange(selectedM, pickerYear);
+    }
   };
 
   const handleGoToCurrentMonth = () => {
@@ -89,6 +97,9 @@ export const Navbar: React.FC = () => {
     setYear(realCurrentYear);
     setPickerYear(realCurrentYear);
     setIsPickerOpen(false);
+    if (realCurrentMonth !== month || realCurrentYear !== year) {
+      notifyMonthChange(realCurrentMonth, realCurrentYear);
+    }
   };
 
   const navItems = [

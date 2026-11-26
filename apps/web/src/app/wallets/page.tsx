@@ -25,11 +25,19 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useFinance } from '../../context/FinancialContext';
+import { useToast } from '../../context/ToastContext';
 import { formatMMK, MONTHS, formatDateTime } from '../../lib/utils';
 import { ProgressLoading } from '../../components/ProgressLoading';
 import { InfoTooltip } from '../../components/InfoTooltip';
 import { TransferModal } from '../../components/TransferModal';
 import { ConfirmDeleteModal } from '../../components/ConfirmDeleteModal';
+import {
+  getWalletVisual,
+  WALLET_COLOR_PRESETS,
+  WALLET_ICON_PRESETS,
+  getDefaultWalletColor,
+  getDefaultWalletIcon,
+} from '../../components/WalletBadge';
 import api from '../../lib/api';
 
 export default function WalletsPage() {
@@ -42,6 +50,8 @@ export default function WalletsPage() {
   const [walletName, setWalletName] = useState('');
   const [walletType, setWalletType] = useState<'CASH' | 'MOBILE_WALLET' | 'BANK' | 'SAVINGS'>('MOBILE_WALLET');
   const [walletRole, setWalletRole] = useState<'DAILY_SPENDING' | 'RESERVE' | 'SAVINGS_HOLDING'>('DAILY_SPENDING');
+  const [walletColor, setWalletColor] = useState<string>(getDefaultWalletColor('MOBILE_WALLET'));
+  const [walletIcon, setWalletIcon] = useState<string>(getDefaultWalletIcon('MOBILE_WALLET'));
   const [initialBalance, setInitialBalance] = useState('');
   const [budgetLimit, setBudgetLimit] = useState('');
   const [creatingWalletName, setCreatingWalletName] = useState<string | null>(null);
@@ -53,12 +63,19 @@ export default function WalletsPage() {
   const [deletingTransfer, setDeletingTransfer] = useState<any | null>(null);
   const [isDeletingTransfer, setIsDeletingTransfer] = useState(false);
   const [deleteTransferError, setDeleteTransferError] = useState<string | null>(null);
+  const [smashingAccountId, setSmashingAccountId] = useState<string | null>(null);
+  const [hiddenAccountIds, setHiddenAccountIds] = useState<string[]>([]);
+  const [smashingTransferId, setSmashingTransferId] = useState<string | null>(null);
+  const [hiddenTransferIds, setHiddenTransferIds] = useState<string[]>([]);
+  const { showToast } = useToast();
 
   // Edit Wallet State
   const [editingAccount, setEditingAccount] = useState<any | null>(null);
   const [editName, setEditName] = useState('');
   const [editType, setEditType] = useState<'CASH' | 'MOBILE_WALLET' | 'BANK' | 'SAVINGS'>('MOBILE_WALLET');
   const [editRole, setEditRole] = useState<'DAILY_SPENDING' | 'RESERVE' | 'SAVINGS_HOLDING'>('DAILY_SPENDING');
+  const [editColor, setEditColor] = useState<string>(getDefaultWalletColor('MOBILE_WALLET'));
+  const [editIcon, setEditIcon] = useState<string>(getDefaultWalletIcon('MOBILE_WALLET'));
   const [editBalance, setEditBalance] = useState('');
   const [editBudgetLimit, setEditBudgetLimit] = useState('');
   const [editLoading, setEditLoading] = useState(false);
@@ -111,15 +128,22 @@ export default function WalletsPage() {
 
   const handleConfirmDeleteTransfer = async () => {
     if (!deletingTransfer) return;
+    const id = deletingTransfer.id;
     setIsDeletingTransfer(true);
     setDeleteTransferError(null);
     try {
-      await api.delete(`/transactions/${deletingTransfer.id}`);
+      await api.delete(`/transactions/${id}`);
       setDeletingTransfer(null);
-      await Promise.all([refreshData(), loadTransfers()]);
+      setIsDeletingTransfer(false);
+      showToast('Transfer deleted', 'delete');
+      setSmashingTransferId(id);
+      setTimeout(async () => {
+        setHiddenTransferIds((prev) => [...prev, id]);
+        setSmashingTransferId(null);
+        await Promise.all([refreshData(), loadTransfers()]);
+      }, 380);
     } catch (err: any) {
       setDeleteTransferError(err.response?.data?.message || 'Failed to delete transfer.');
-    } finally {
       setIsDeletingTransfer(false);
     }
   };
@@ -135,6 +159,8 @@ export default function WalletsPage() {
       name: trimmedName,
       type: walletType,
       role: walletRole,
+      color: walletColor,
+      icon: walletIcon,
       balance: balanceValue,
       budgetLimit: budgetValue && budgetValue > 0 ? budgetValue : null,
       month,
@@ -148,10 +174,13 @@ export default function WalletsPage() {
     setWalletName('');
     setInitialBalance('');
     setBudgetLimit('');
+    setWalletColor(getDefaultWalletColor('MOBILE_WALLET'));
+    setWalletIcon(getDefaultWalletIcon('MOBILE_WALLET'));
 
     try {
       await api.post('/accounts', payload);
       await refreshData();
+      showToast(`Wallet "${trimmedName}" created`, 'success');
     } catch (err: any) {
       alert(err.response?.data?.message || 'Failed to create wallet.');
     } finally {
@@ -166,16 +195,23 @@ export default function WalletsPage() {
 
   const handleConfirmDelete = async () => {
     if (!deletingAccount) return;
+    const { id, name } = deletingAccount;
     setIsDeleting(true);
     setDeleteError(null);
     try {
-      await api.delete(`/accounts/${deletingAccount.id}`);
+      await api.delete(`/accounts/${id}`);
       setDeletingAccount(null);
-      await Promise.all([refreshData(), loadTransfers()]);
+      setIsDeleting(false);
+      showToast(`Deleted "${name}" wallet`, 'delete');
+      setSmashingAccountId(id);
+      setTimeout(async () => {
+        setHiddenAccountIds((prev) => [...prev, id]);
+        setSmashingAccountId(null);
+        await Promise.all([refreshData(), loadTransfers()]);
+      }, 380);
     } catch (err: any) {
       console.error('Failed to delete wallet:', err);
       setDeleteError(err.response?.data?.message || 'Failed to delete wallet. Please try again.');
-    } finally {
       setIsDeleting(false);
     }
   };
@@ -187,6 +223,8 @@ export default function WalletsPage() {
     setEditRole(
       acc.role || (acc.type === 'BANK' ? 'RESERVE' : acc.type === 'SAVINGS' ? 'SAVINGS_HOLDING' : 'DAILY_SPENDING')
     );
+    setEditColor(acc.color || getDefaultWalletColor(acc.type));
+    setEditIcon(acc.icon || getDefaultWalletIcon(acc.type));
     setEditBalance(String(acc.startingBalance ?? acc.balance ?? 0));
     setEditBudgetLimit(acc.budgetLimit ? String(acc.budgetLimit) : '');
   };
@@ -204,6 +242,8 @@ export default function WalletsPage() {
         name: editName.trim(),
         type: editType,
         role: editRole,
+        color: editColor,
+        icon: editIcon,
         balance: parsedBalance,
         budgetLimit: budgetValue && budgetValue > 0 ? budgetValue : null,
         month,
@@ -211,6 +251,7 @@ export default function WalletsPage() {
       });
 
       setEditingAccount(null);
+      showToast(`Updated "${editName.trim()}" wallet`, 'success');
       await refreshData();
     } catch (err: any) {
       alert(err.response?.data?.message || 'Failed to update wallet.');
@@ -224,6 +265,7 @@ export default function WalletsPage() {
     try {
       await api.post(`/accounts/reset?month=${month}&year=${year}`);
       setIsResetModalOpen(false);
+      showToast(`Reset starting balances to 0 for ${monthLabel} ${year}`, 'delete');
       await refreshData();
     } catch (err: any) {
       alert(err.response?.data?.message || 'Failed to reset wallet balances.');
@@ -291,12 +333,16 @@ export default function WalletsPage() {
 
   const monthLabel = MONTHS.find((m) => m.value === month)?.label || '';
 
-  const displayAccounts = (monthlyAccounts.length > 0 ? monthlyAccounts : accounts).map((acc) => {
+  const displayAccounts = (monthlyAccounts.length > 0 ? monthlyAccounts : accounts)
+    .filter((acc) => !hiddenAccountIds.includes(acc.id))
+    .map((acc) => {
     const monthly = monthlyAccounts.find((m) => m.id === acc.id);
     return {
       id: acc.id,
       name: acc.name,
       type: acc.type,
+      color: acc.color ?? monthly?.color ?? null,
+      icon: acc.icon ?? monthly?.icon ?? null,
       role:
         acc.role ||
         monthly?.role ||
@@ -412,8 +458,7 @@ export default function WalletsPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {displayAccounts.map((acc) => {
-            const Icon = getWalletIcon(acc.type);
-            const gradient = getWalletGradient(acc.type);
+            const { Icon, color } = getWalletVisual(acc.type, acc.color, acc.icon);
             const budgetUsage =
               acc.budgetLimit && acc.budgetLimit > 0
                 ? Math.min((acc.monthlyExpense / acc.budgetLimit) * 100, 100)
@@ -422,10 +467,15 @@ export default function WalletsPage() {
             return (
               <div
                 key={acc.id}
-                className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden"
+                className={`bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden ${
+                  smashingAccountId === acc.id ? 'animate-item-smash' : ''
+                }`}
               >
                 {/* Colored Header Strip */}
-                <div className={`bg-gradient-to-r ${gradient} px-6 py-4 flex items-center justify-between`}>
+                <div
+                  className="px-6 py-4 flex items-center justify-between"
+                  style={{ background: `linear-gradient(135deg, ${color}, ${color}DD)` }}
+                >
                   <div className="flex items-center space-x-3">
                     <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
                       <Icon className="w-5 h-5 text-white" />
@@ -640,12 +690,16 @@ export default function WalletsPage() {
               </div>
             ))}
           </div>
-        ) : recentTransfers.length > 0 ? (
+        ) : recentTransfers.filter((tr) => !hiddenTransferIds.includes(tr.id)).length > 0 ? (
           <div className="divide-y divide-slate-100 dark:divide-slate-800">
-            {recentTransfers.map((tr) => (
+            {recentTransfers
+              .filter((tr) => !hiddenTransferIds.includes(tr.id))
+              .map((tr) => (
               <div
                 key={tr.id}
-                className="px-6 py-3.5 flex items-center justify-between hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors"
+                className={`px-6 py-3.5 flex items-center justify-between hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors ${
+                  smashingTransferId === tr.id ? 'animate-item-smash bg-rose-50/70 dark:bg-rose-950/30' : ''
+                }`}
               >
                 <div className="flex items-center space-x-3">
                   <div className="w-9 h-9 rounded-xl bg-sky-50 dark:bg-sky-950/60 text-sky-600 dark:text-sky-400 flex items-center justify-center">
@@ -766,6 +820,8 @@ export default function WalletsPage() {
                     onChange={(e) => {
                       const nextType = e.target.value as any;
                       setWalletType(nextType);
+                      setWalletColor(getDefaultWalletColor(nextType));
+                      setWalletIcon(getDefaultWalletIcon(nextType));
                       setWalletRole(
                         nextType === 'BANK'
                           ? 'RESERVE'
@@ -781,6 +837,56 @@ export default function WalletsPage() {
                     <option value="BANK" className="dark:bg-slate-900">Bank Account</option>
                     <option value="SAVINGS" className="dark:bg-slate-900">Savings Account</option>
                   </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
+                    Wallet Color
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {WALLET_COLOR_PRESETS.map((c) => (
+                      <button
+                        key={c}
+                        type="button"
+                        onClick={() => setWalletColor(c)}
+                        className={`w-7 h-7 rounded-full transition-all flex items-center justify-center ${
+                          walletColor === c ? 'ring-2 ring-offset-2 ring-slate-900 dark:ring-white scale-110' : 'opacity-80 hover:opacity-100'
+                        }`}
+                        style={{ backgroundColor: c }}
+                        title={c}
+                      >
+                        {walletColor === c && <Check className="w-3.5 h-3.5 text-white" />}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
+                    Wallet Icon
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {WALLET_ICON_PRESETS.map((preset) => {
+                      const { Icon: PresetIcon } = getWalletVisual(walletType, walletColor, preset.id);
+                      const isSelected = walletIcon === preset.id;
+                      return (
+                        <button
+                          key={preset.id}
+                          type="button"
+                          onClick={() => setWalletIcon(preset.id)}
+                          className={`flex items-center space-x-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold border transition-all ${
+                            isSelected
+                              ? 'border-teal-500 bg-teal-50 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300 shadow-sm'
+                              : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
+                          }`}
+                          title={preset.label}
+                        >
+                          <PresetIcon className="w-3.5 h-3.5" style={{ color: isSelected ? walletColor : undefined }} />
+                          <span>{preset.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
 
                 <div>
@@ -927,6 +1033,56 @@ export default function WalletsPage() {
                     <option value="BANK" className="dark:bg-slate-900">Bank Account</option>
                     <option value="SAVINGS" className="dark:bg-slate-900">Savings Account</option>
                   </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
+                    Wallet Color
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {WALLET_COLOR_PRESETS.map((c) => (
+                      <button
+                        key={c}
+                        type="button"
+                        onClick={() => setEditColor(c)}
+                        className={`w-7 h-7 rounded-full transition-all flex items-center justify-center ${
+                          editColor === c ? 'ring-2 ring-offset-2 ring-slate-900 dark:ring-white scale-110' : 'opacity-80 hover:opacity-100'
+                        }`}
+                        style={{ backgroundColor: c }}
+                        title={c}
+                      >
+                        {editColor === c && <Check className="w-3.5 h-3.5 text-white" />}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
+                    Wallet Icon
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {WALLET_ICON_PRESETS.map((preset) => {
+                      const { Icon: PresetIcon } = getWalletVisual(editType, editColor, preset.id);
+                      const isSelected = editIcon === preset.id;
+                      return (
+                        <button
+                          key={preset.id}
+                          type="button"
+                          onClick={() => setEditIcon(preset.id)}
+                          className={`flex items-center space-x-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold border transition-all ${
+                            isSelected
+                              ? 'border-teal-500 bg-teal-50 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300 shadow-sm'
+                              : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
+                          }`}
+                          title={preset.label}
+                        >
+                          <PresetIcon className="w-3.5 h-3.5" style={{ color: isSelected ? editColor : undefined }} />
+                          <span>{preset.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
 
                 <div>

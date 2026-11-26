@@ -47,8 +47,8 @@ router.get('/', async (req: AuthRequest, res: Response) => {
     const transactions = await prisma.transaction.findMany({
       where,
       include: {
-        account: { select: { id: true, name: true, type: true, role: true } },
-        toAccount: { select: { id: true, name: true, type: true, role: true } },
+        account: { select: { id: true, name: true, type: true, role: true, color: true, icon: true } },
+        toAccount: { select: { id: true, name: true, type: true, role: true, color: true, icon: true } },
         category: { select: { id: true, name: true, icon: true, color: true } },
       },
       orderBy: { date: 'desc' },

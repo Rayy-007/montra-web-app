@@ -11,6 +11,8 @@ const accountSchema = z.object({
   name: z.string().min(1),
   type: z.enum(['CASH', 'MOBILE_WALLET', 'BANK', 'SAVINGS']),
   role: z.enum(['DAILY_SPENDING', 'RESERVE', 'SAVINGS_HOLDING']).optional(),
+  color: z.string().optional().nullable(),
+  icon: z.string().optional().nullable(),
   balance: z.number().default(0),
   budgetLimit: z.number().optional().nullable(),
 });
@@ -69,6 +71,8 @@ router.post('/', async (req: AuthRequest, res: Response) => {
         name: parsed.data.name,
         type: parsed.data.type,
         role,
+        color: parsed.data.color ?? null,
+        icon: parsed.data.icon ?? null,
         balance: parsed.data.balance,
         budgetLimit: parsed.data.budgetLimit,
       },

@@ -62,6 +62,8 @@ model Account {
   name               String              // "Cash", "Kpay", "KBZ Bank", "AYA Bank"
   type               AccountType         @default(CASH)
   role               WalletRole          @default(DAILY_SPENDING)
+  color              String?
+  icon               String?
   balance            Decimal             @default(0)
   budgetLimit        Decimal?            // Optional monthly spending cap
   transactions       Transaction[]       @relation("TransactionAccount")

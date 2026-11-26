@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { X, PieChart, AlertCircle, Check, RotateCcw, TrendingUp } from 'lucide-react';
 import { formatMMK, formatNumber, MONTHS } from '../lib/utils';
+import { useToast } from '../context/ToastContext';
 import api from '../lib/api';
 
 export interface BudgetCategoryItem {
@@ -37,6 +38,7 @@ export const SetBudgetModal: React.FC<SetBudgetModalProps> = ({
   const [amount, setAmount] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const { showToast } = useToast();
 
   useEffect(() => {
     if (category) {
@@ -67,6 +69,7 @@ export const SetBudgetModal: React.FC<SetBudgetModalProps> = ({
         categoryId: category.categoryId,
         plannedAmount: numericAmount,
       });
+      showToast(`Budget updated for ${category.categoryName}`, 'success');
       onSuccess();
       onClose();
     } catch (err: any) {
@@ -81,6 +84,7 @@ export const SetBudgetModal: React.FC<SetBudgetModalProps> = ({
     setError(null);
     try {
       await api.delete(`/budgets/items/${category.categoryId}?month=${month}&year=${year}`);
+      showToast(`Budget reset to 0 for ${category.categoryName}`, 'delete');
       onSuccess();
       onClose();
     } catch (err: any) {

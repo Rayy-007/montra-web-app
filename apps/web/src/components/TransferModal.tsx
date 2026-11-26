@@ -13,6 +13,7 @@ import {
   Info,
 } from 'lucide-react';
 import { useFinance } from '../context/FinancialContext';
+import { useToast } from '../context/ToastContext';
 import { formatMMK, toLocalDateTimeInput } from '../lib/utils';
 import api from '../lib/api';
 
@@ -40,6 +41,7 @@ export const TransferModal: React.FC<TransferModalProps> = ({
   defaultToId,
 }) => {
   const { accounts, refreshData } = useFinance();
+  const { showToast } = useToast();
 
   const [fromAccountId, setFromAccountId] = useState('');
   const [toAccountId, setToAccountId] = useState('');
@@ -123,6 +125,7 @@ export const TransferModal: React.FC<TransferModalProps> = ({
       });
 
       await refreshData();
+      showToast(`Moved ${formatMMK(parsedAmount)} to ${toAccount?.name || 'wallet'}`, 'success');
       if (onSuccess) onSuccess();
       onClose();
     } catch (err: any) {

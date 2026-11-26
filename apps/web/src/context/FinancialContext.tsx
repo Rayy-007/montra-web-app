@@ -9,6 +9,8 @@ export interface Account {
   name: string;
   type: 'CASH' | 'MOBILE_WALLET' | 'BANK' | 'SAVINGS';
   role?: 'DAILY_SPENDING' | 'RESERVE' | 'SAVINGS_HOLDING';
+  color?: string | null;
+  icon?: string | null;
   balance: number;
   startingBalance?: number;
   isCarriedOver?: boolean;

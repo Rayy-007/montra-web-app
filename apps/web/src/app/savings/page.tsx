@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useFinance } from '../../context/FinancialContext';
+import { useToast } from '../../context/ToastContext';
 import { formatMMK, MONTHS, formatDateTime, toLocalDateTimeInput } from '../../lib/utils';
 import { ProgressLoading } from '../../components/ProgressLoading';
 import { InfoTooltip } from '../../components/InfoTooltip';
@@ -84,6 +85,11 @@ export default function SavingsPage() {
   const [deletingAllocation, setDeletingAllocation] = useState<any | null>(null);
   const [isDeletingAllocation, setIsDeletingAllocation] = useState(false);
   const [deleteAllocationError, setDeleteAllocationError] = useState<string | null>(null);
+  const [smashingGoalId, setSmashingGoalId] = useState<string | null>(null);
+  const [smashingAllocId, setSmashingAllocId] = useState<string | null>(null);
+  const [hiddenGoalIds, setHiddenGoalIds] = useState<string[]>([]);
+  const [hiddenAllocIds, setHiddenAllocIds] = useState<string[]>([]);
+  const { showToast } = useToast();
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -149,6 +155,7 @@ export default function SavingsPage() {
       }
 
       setIsGoalModalOpen(false);
+      showToast(editingGoal ? 'Savings goal updated' : 'Savings goal created', 'success');
       await loadSavings(true);
       await refreshData();
     } catch (err: any) {
@@ -165,16 +172,23 @@ export default function SavingsPage() {
 
   const handleConfirmDeleteGoal = async () => {
     if (!deletingGoal) return;
+    const { id, name } = deletingGoal;
     setIsDeletingGoal(true);
     setDeleteGoalError(null);
     try {
-      await api.delete(`/savings/goals/${deletingGoal.id}`);
+      await api.delete(`/savings/goals/${id}`);
       setDeletingGoal(null);
-      await loadSavings(true);
-      await refreshData();
+      setIsDeletingGoal(false);
+      setSmashingGoalId(id);
+      showToast(`Deleted "${name}" savings goal`, 'delete');
+      setTimeout(() => {
+        setHiddenGoalIds((prev) => [...prev, id]);
+        setSmashingGoalId(null);
+        loadSavings(true);
+        refreshData();
+      }, 380);
     } catch (err: any) {
       setDeleteGoalError(err.response?.data?.message || 'Failed to delete goal.');
-    } finally {
       setIsDeletingGoal(false);
     }
   };
@@ -239,6 +253,10 @@ export default function SavingsPage() {
       });
 
       setAllocModalGoal(null);
+      showToast(
+        allocDirection === 'ADD' ? 'Savings added successfully' : 'Savings updated',
+        'success'
+      );
       await Promise.all([loadSavings(true), refreshData()]);
     } catch (err: any) {
       setAllocError(err.response?.data?.message || 'Failed to save contribution.');
@@ -254,15 +272,23 @@ export default function SavingsPage() {
 
   const handleConfirmDeleteAllocation = async () => {
     if (!deletingAllocation) return;
+    const id = deletingAllocation.id;
     setIsDeletingAllocation(true);
     setDeleteAllocationError(null);
     try {
-      await api.delete(`/savings/allocations/${deletingAllocation.id}`);
+      await api.delete(`/savings/allocations/${id}`);
       setDeletingAllocation(null);
-      await Promise.all([loadSavings(true), refreshData()]);
+      setIsDeletingAllocation(false);
+      setSmashingAllocId(id);
+      showToast('Savings entry removed', 'delete');
+      setTimeout(() => {
+        setHiddenAllocIds((prev) => [...prev, id]);
+        setSmashingAllocId(null);
+        loadSavings(true);
+        refreshData();
+      }, 380);
     } catch (err: any) {
       setDeleteAllocationError(err.response?.data?.message || 'Failed to delete entry.');
-    } finally {
       setIsDeletingAllocation(false);
     }
   };
@@ -286,9 +312,11 @@ export default function SavingsPage() {
   }
 
   const monthLabel = MONTHS.find((m) => m.value === month)?.label || 'Month';
-  const goals: any[] = savingsData?.goals || [];
+  const goals: any[] = (savingsData?.goals || []).filter((g: any) => !hiddenGoalIds.includes(g.id));
   const walletHoldings: any[] = savingsData?.walletHoldings || [];
-  const recentAllocations: any[] = savingsData?.recentAllocations || [];
+  const recentAllocations: any[] = (savingsData?.recentAllocations || []).filter(
+    (a: any) => !hiddenAllocIds.includes(a.id)
+  );
   const summary = savingsData?.summary || {
     totalSavedAllGoals: 0,
     totalTargetAllGoals: 0,
@@ -434,7 +462,9 @@ export default function SavingsPage() {
             return (
               <div
                 key={goal.id}
-                className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm hover:shadow-md transition-all flex flex-col justify-between overflow-hidden"
+                className={`bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm hover:shadow-md transition-all flex flex-col justify-between overflow-hidden ${
+                  smashingGoalId === goal.id ? 'animate-item-smash' : ''
+                }`}
               >
                 <div>
                   <div className="h-2 w-full" style={{ backgroundColor: goal.color || '#10B981' }} />
@@ -585,7 +615,9 @@ export default function SavingsPage() {
               return (
                 <div
                   key={item.id}
-                  className="px-6 py-3.5 flex items-center justify-between hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors"
+                  className={`px-6 py-3.5 flex items-center justify-between hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors ${
+                    smashingAllocId === item.id ? 'animate-item-smash bg-rose-50/70 dark:bg-rose-950/30' : ''
+                  }`}
                 >
                   <div className="flex items-center space-x-3">
                     <span

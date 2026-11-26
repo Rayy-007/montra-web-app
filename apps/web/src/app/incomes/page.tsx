@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useFinance } from '../../context/FinancialContext';
+import { useToast } from '../../context/ToastContext';
 import { formatMMK, MONTHS, formatDateTime, toLocalDateTimeInput } from '../../lib/utils';
 import { AddIncomeModal } from '../../components/AddIncomeModal';
 import { ConfirmDeleteModal } from '../../components/ConfirmDeleteModal';
@@ -64,6 +65,9 @@ export default function IncomesPage() {
   const [deletingIncomeId, setDeletingIncomeId] = useState<string | null>(null);
   const [isDeletingIncome, setIsDeletingIncome] = useState(false);
   const [deleteIncomeError, setDeleteIncomeError] = useState<string | null>(null);
+  const [smashingIncomeId, setSmashingIncomeId] = useState<string | null>(null);
+  const [hiddenIncomeIds, setHiddenIncomeIds] = useState<string[]>([]);
+  const { showToast } = useToast();
 
   useEffect(() => {
     if (!authLoading && !user) router.push('/login');
@@ -127,6 +131,7 @@ export default function IncomesPage() {
         actualDate: new Date(receiveDate).toISOString()
       });
       setReceivingPlan(null);
+      showToast('Income received & added to wallet', 'success');
       await loadIncomes(true);
       refreshData();
     } catch (err: any) {
@@ -158,6 +163,7 @@ export default function IncomesPage() {
         description: editDescription.trim() || null,
       });
       setEditingPlan(null);
+      showToast('Income updated successfully', 'success');
       await loadIncomes(true);
       refreshData();
     } catch (err: any) {
@@ -174,17 +180,24 @@ export default function IncomesPage() {
 
   const handleConfirmDelete = async () => {
     if (!deletingIncomeId) return;
+    const id = deletingIncomeId;
     setIsDeletingIncome(true);
     setDeleteIncomeError(null);
     try {
-      await api.delete(`/incomes/${deletingIncomeId}`);
+      await api.delete(`/incomes/${id}`);
       setDeletingIncomeId(null);
-      await loadIncomes(true);
-      refreshData();
+      setIsDeletingIncome(false);
+      setSmashingIncomeId(id);
+      showToast('Income entry deleted', 'delete');
+      setTimeout(() => {
+        setHiddenIncomeIds((prev) => [...prev, id]);
+        setSmashingIncomeId(null);
+        loadIncomes(true);
+        refreshData();
+      }, 380);
     } catch (err: any) {
       console.error('Failed to delete income:', err);
       setDeleteIncomeError(err.response?.data?.message || 'Failed to delete income entry.');
-    } finally {
       setIsDeletingIncome(false);
     }
   };
@@ -288,11 +301,18 @@ export default function IncomesPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                  {incomesData.items.map((plan: any) => {
+                  {incomesData.items
+                    .filter((plan: any) => !hiddenIncomeIds.includes(plan.id))
+                    .map((plan: any) => {
                     const isReceived = plan.status === 'RECEIVED';
                     const isPartial = plan.status === 'PARTIAL';
                     return (
-                      <tr key={plan.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/50 transition-colors">
+                      <tr
+                        key={plan.id}
+                        className={`hover:bg-slate-50/60 dark:hover:bg-slate-800/50 transition-colors ${
+                          smashingIncomeId === plan.id ? 'animate-item-smash bg-rose-50/70 dark:bg-rose-950/30' : ''
+                        }`}
+                      >
                         <td className="px-6 py-4">
                           <div className="font-bold text-slate-900 dark:text-slate-100">{plan.source}</div>
                           {plan.description && (
@@ -368,11 +388,18 @@ export default function IncomesPage() {
 
             {/* Mobile Card List View */}
             <div className="md:hidden divide-y divide-slate-100 dark:divide-slate-800">
-              {incomesData.items.map((plan: any) => {
+              {incomesData.items
+                .filter((plan: any) => !hiddenIncomeIds.includes(plan.id))
+                .map((plan: any) => {
                 const isReceived = plan.status === 'RECEIVED';
                 const isPartial = plan.status === 'PARTIAL';
                 return (
-                  <div key={plan.id} className="p-4 space-y-3">
+                  <div
+                    key={plan.id}
+                    className={`p-4 space-y-3 ${
+                      smashingIncomeId === plan.id ? 'animate-item-smash bg-rose-50/70 dark:bg-rose-950/30' : ''
+                    }`}
+                  >
                     <div className="flex items-start justify-between gap-2">
                       <div>
                         <div className="font-bold text-slate-900 dark:text-slate-100 text-sm">{plan.source}</div>

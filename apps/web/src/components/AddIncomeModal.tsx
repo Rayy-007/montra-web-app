@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X, TrendingUp, AlertCircle } from 'lucide-react';
 import { useFinance } from '../context/FinancialContext';
+import { useToast } from '../context/ToastContext';
 import api from '../lib/api';
 import { formatMMK, toLocalDateTimeInput } from '../lib/utils';
 
@@ -19,6 +20,7 @@ export const AddIncomeModal: React.FC<AddIncomeModalProps> = ({
   onSuccess,
 }) => {
   const { month, year, accounts, refreshData } = useFinance();
+  const { showToast } = useToast();
   const [source, setSource] = useState('');
   const [expectedAmount, setExpectedAmount] = useState('');
   const [expectedDate, setExpectedDate] = useState(() => toLocalDateTimeInput());
@@ -72,6 +74,7 @@ export const AddIncomeModal: React.FC<AddIncomeModalProps> = ({
       setExpectedAmount('');
       setDescription('');
       setIsReceivedInstantly(false);
+      showToast(isReceivedInstantly ? 'Income saved & added to wallet' : 'Income plan saved', 'success');
       if (onSuccess) onSuccess();
       refreshData();
     } catch (err: any) {

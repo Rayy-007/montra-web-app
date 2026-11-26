@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Receipt, AlertCircle, CheckCircle } from 'lucide-react';
 import { useFinance } from '../context/FinancialContext';
+import { useToast } from '../context/ToastContext';
 import api from '../lib/api';
 import { formatMMK, toLocalDateTimeInput } from '../lib/utils';
 
@@ -19,6 +20,7 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
   onSuccess,
 }) => {
   const { accounts, categories, refreshData } = useFinance();
+  const { showToast } = useToast();
   const [accountId, setAccountId] = useState('');
   const [categoryId, setCategoryId] = useState('');
   const [amount, setAmount] = useState('');
@@ -64,6 +66,7 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
       onClose();
       setAmount('');
       setDescription('');
+      showToast('Expense saved successfully', 'success');
       if (onSuccess) onSuccess();
       refreshData();
     } catch (err: any) {

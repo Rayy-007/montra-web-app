@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useFinance } from '../../context/FinancialContext';
+import { useToast } from '../../context/ToastContext';
 import { formatMMK, formatNumber, MONTHS } from '../../lib/utils';
 import { ProgressLoading } from '../../components/ProgressLoading';
 import { SetBudgetModal, BudgetCategoryItem } from '../../components/SetBudgetModal';
@@ -95,6 +96,9 @@ export default function BudgetsPage() {
   const [categoryToRemove, setCategoryToRemove] = useState<{ id: string; name: string } | null>(null);
   const [isRemovingCategory, setIsRemovingCategory] = useState(false);
   const [removeError, setRemoveError] = useState<string | null>(null);
+  const [smashingCategoryId, setSmashingCategoryId] = useState<string | null>(null);
+  const [hiddenCategoryIds, setHiddenCategoryIds] = useState<string[]>([]);
+  const { showToast } = useToast();
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -143,7 +147,9 @@ export default function BudgetsPage() {
     setIsResettingItem(true);
     try {
       await api.delete(`/budgets/items/${categoryToReset.id}?month=${month}&year=${year}`);
+      const resetName = categoryToReset.name;
       setCategoryToReset(null);
+      showToast(`Budget reset to 0 for ${resetName}`, 'delete');
       await loadBudgets(true);
       refreshData();
     } catch (err: any) {
@@ -155,16 +161,23 @@ export default function BudgetsPage() {
 
   const handleConfirmRemoveCategory = async () => {
     if (!categoryToRemove) return;
+    const { id, name } = categoryToRemove;
     setIsRemovingCategory(true);
     setRemoveError(null);
     try {
-      await api.delete(`/categories/${categoryToRemove.id}`);
+      await api.delete(`/categories/${id}`);
       setCategoryToRemove(null);
-      await loadBudgets(true);
-      refreshData();
+      setIsRemovingCategory(false);
+      setSmashingCategoryId(id);
+      showToast(`Removed "${name}" budget category`, 'delete');
+      setTimeout(() => {
+        setHiddenCategoryIds((prev) => [...prev, id]);
+        setSmashingCategoryId(null);
+        loadBudgets(true);
+        refreshData();
+      }, 380);
     } catch (err: any) {
       setRemoveError(err.response?.data?.message || 'Failed to remove budget category.');
-    } finally {
       setIsRemovingCategory(false);
     }
   };
@@ -181,6 +194,7 @@ export default function BudgetsPage() {
   // Filtered and Sorted Categories
   const filteredAndSortedCategories = useMemo(() => {
     const list = (budgetData?.categories || []).filter((cat: any) => {
+      if (hiddenCategoryIds.includes(cat.categoryId)) return false;
       if (!searchTerm.trim()) return true;
       return cat.categoryName.toLowerCase().includes(searchTerm.trim().toLowerCase());
     });
@@ -199,7 +213,7 @@ export default function BudgetsPage() {
         ? (valA ?? 0) - (valB ?? 0)
         : (valB ?? 0) - (valA ?? 0);
     });
-  }, [budgetData?.categories, searchTerm, sortBy, sortOrder]);
+  }, [budgetData?.categories, hiddenCategoryIds, searchTerm, sortBy, sortOrder]);
 
   const handleCreateCustomBudget = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -232,6 +246,7 @@ export default function BudgetsPage() {
       setCustomCategoryName('');
       setCustomPlannedAmount('');
       setSelectedExistingCategoryId('');
+      showToast('Budget limit added', 'success');
       await loadBudgets(true);
       refreshData();
     } catch (err: any) {
@@ -534,7 +549,12 @@ export default function BudgetsPage() {
                   {filteredAndSortedCategories.map((cat: any) => {
                     const isOverBudget = cat.actualExpense > cat.plannedAmount && cat.plannedAmount > 0;
                     return (
-                      <tr key={cat.categoryId} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/50 transition-colors">
+                      <tr
+                        key={cat.categoryId}
+                        className={`hover:bg-slate-50/60 dark:hover:bg-slate-800/50 transition-colors ${
+                          smashingCategoryId === cat.categoryId ? 'animate-item-smash bg-rose-50/70 dark:bg-rose-950/30' : ''
+                        }`}
+                      >
                         {/* Category Name */}
                         <td className="px-6 py-4">
                           <CategoryBadge
@@ -641,7 +661,12 @@ export default function BudgetsPage() {
               {filteredAndSortedCategories.map((cat: any) => {
                 const isOverBudget = cat.actualExpense > cat.plannedAmount && cat.plannedAmount > 0;
                 return (
-                  <div key={cat.categoryId} className="p-4 space-y-3">
+                  <div
+                    key={cat.categoryId}
+                    className={`p-4 space-y-3 ${
+                      smashingCategoryId === cat.categoryId ? 'animate-item-smash bg-rose-50/70 dark:bg-rose-950/30' : ''
+                    }`}
+                  >
                     <div className="flex items-center justify-between">
                       <CategoryBadge
                         name={cat.categoryName}
