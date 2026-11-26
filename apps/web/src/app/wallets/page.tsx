@@ -49,6 +49,7 @@ export default function WalletsPage() {
   // Transfers list & loading state
   const [recentTransfers, setRecentTransfers] = useState<any[]>([]);
   const [transfersLoading, setTransfersLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [deletingTransfer, setDeletingTransfer] = useState<any | null>(null);
   const [isDeletingTransfer, setIsDeletingTransfer] = useState(false);
   const [deleteTransferError, setDeleteTransferError] = useState<string | null>(null);
@@ -93,6 +94,15 @@ export default function WalletsPage() {
   useEffect(() => {
     if (user) loadTransfers();
   }, [user, month, year]);
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await Promise.all([refreshData(), loadTransfers()]);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   const handleDeleteTransfer = (transfer: any) => {
     setDeleteTransferError(null);
@@ -339,6 +349,17 @@ export default function WalletsPage() {
 
         <div className="flex flex-wrap items-center gap-2">
           <button
+            onClick={handleRefresh}
+            disabled={isRefreshing || financeLoading}
+            title="Refresh wallet balances and transfers"
+            className="p-2.5 bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white font-semibold rounded-xl text-sm shadow-sm transition-all flex items-center space-x-1.5 disabled:opacity-50"
+          >
+            <RotateCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin text-teal-600 dark:text-teal-400' : ''}`} />
+            <span className="hidden sm:inline text-xs font-semibold">
+              {isRefreshing ? 'Refreshing...' : 'Refresh'}
+            </span>
+          </button>
+          <button
             onClick={() => setIsTransferModalOpen(true)}
             disabled={displayAccounts.length < 2}
             title="Move money between KPay, Cash, KBZ Bank, or AYA Bank"
@@ -346,15 +367,6 @@ export default function WalletsPage() {
           >
             <ArrowLeftRight className="w-4 h-4" />
             <span>Move Money</span>
-          </button>
-          <button
-            onClick={() => setIsResetModalOpen(true)}
-            disabled={isResettingAll || displayAccounts.length === 0}
-            title={`Set all wallet balances to 0 MMK for ${monthLabel} ${year}`}
-            className="py-2.5 px-3.5 bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold rounded-xl text-sm shadow-sm transition-all flex items-center space-x-2 disabled:opacity-50"
-          >
-            <RotateCcw className={`w-4 h-4 ${isResettingAll ? 'animate-spin text-teal-600' : 'text-slate-500 dark:text-slate-400'}`} />
-            <span className="hidden sm:inline">Reset Month</span>
           </button>
           <button
             onClick={() => setIsAddModalOpen(true)}
@@ -682,6 +694,34 @@ export default function WalletsPage() {
           </div>
         )}
       </div>
+
+      {/* Caution Zone: Reset Month Starting Balances */}
+      {displayAccounts.length > 0 && (
+        <div className="bg-amber-50/70 dark:bg-amber-950/20 border border-amber-200/90 dark:border-amber-800/50 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-start space-x-3">
+            <div className="w-9 h-9 rounded-xl bg-amber-100 dark:bg-amber-900/50 flex items-center justify-center text-amber-600 dark:text-amber-400 flex-shrink-0">
+              <AlertTriangle className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-amber-900 dark:text-amber-200">
+                Reset Starting Balances for {monthLabel} {year}
+              </h3>
+              <p className="text-xs text-amber-800/85 dark:text-amber-300/80 mt-0.5">
+                Warning: This sets all wallet starting amounts to <strong>0 MMK</strong> for {monthLabel} {year} only. Earlier months stay untouched.
+              </p>
+            </div>
+          </div>
+
+          <button
+            onClick={() => setIsResetModalOpen(true)}
+            disabled={isResettingAll}
+            className="py-2 px-3.5 bg-white dark:bg-slate-900 border border-amber-300 dark:border-amber-700 hover:bg-amber-100/70 dark:hover:bg-amber-950/60 text-amber-800 dark:text-amber-300 font-bold rounded-xl text-xs shadow-sm transition-all flex items-center space-x-1.5 self-start sm:self-center flex-shrink-0 disabled:opacity-50"
+          >
+            <AlertTriangle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+            <span>{isResettingAll ? 'Resetting...' : 'Reset Month to 0'}</span>
+          </button>
+        </div>
+      )}
 
       {/* Add Account Modal */}
       {isAddModalOpen &&
