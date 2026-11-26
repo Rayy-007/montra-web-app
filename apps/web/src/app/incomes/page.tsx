@@ -18,8 +18,10 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useFinance } from '../../context/FinancialContext';
-import { formatMMK, MONTHS } from '../../lib/utils';
+import { useToast } from '../../context/ToastContext';
+import { formatMMK, MONTHS, formatDateTime, toLocalDateTimeInput } from '../../lib/utils';
 import { AddIncomeModal } from '../../components/AddIncomeModal';
+import { ConfirmDeleteModal } from '../../components/ConfirmDeleteModal';
 import { ProgressLoading } from '../../components/ProgressLoading';
 import { InfoTooltip } from '../../components/InfoTooltip';
 import api from '../../lib/api';
@@ -58,8 +60,14 @@ export default function IncomesPage() {
   const [receivingPlan, setReceivingPlan] = useState<any | null>(null);
   const [receiveAccountId, setReceiveAccountId] = useState('');
   const [receiveAmount, setReceiveAmount] = useState('');
-  const [receiveDate, setReceiveDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [receiveDate, setReceiveDate] = useState(() => toLocalDateTimeInput());
   const [receiveLoading, setReceiveLoading] = useState(false);
+  const [deletingIncomeId, setDeletingIncomeId] = useState<string | null>(null);
+  const [isDeletingIncome, setIsDeletingIncome] = useState(false);
+  const [deleteIncomeError, setDeleteIncomeError] = useState<string | null>(null);
+  const [smashingIncomeId, setSmashingIncomeId] = useState<string | null>(null);
+  const [hiddenIncomeIds, setHiddenIncomeIds] = useState<string[]>([]);
+  const { showToast } = useToast();
 
   useEffect(() => {
     if (!authLoading && !user) router.push('/login');
@@ -109,7 +117,7 @@ export default function IncomesPage() {
     setReceivingPlan(plan);
     const remaining = Number(plan.expectedAmount) - Number(plan.actualAmount);
     setReceiveAmount(String(remaining > 0 ? remaining : plan.expectedAmount));
-    setReceiveDate(new Date().toISOString().split('T')[0]);
+    setReceiveDate(toLocalDateTimeInput());
   };
 
   const handleConfirmReceive = async (e: React.FormEvent) => {
@@ -123,6 +131,7 @@ export default function IncomesPage() {
         actualDate: new Date(receiveDate).toISOString()
       });
       setReceivingPlan(null);
+      showToast('Income received & added to wallet', 'success');
       await loadIncomes(true);
       refreshData();
     } catch (err: any) {
@@ -136,7 +145,7 @@ export default function IncomesPage() {
     setEditingPlan(plan);
     setEditSource(plan.source);
     setEditExpectedAmount(String(plan.expectedAmount));
-    setEditExpectedDate(plan.expectedDate ? plan.expectedDate.split('T')[0] : '');
+    setEditExpectedDate(plan.expectedDate ? toLocalDateTimeInput(plan.expectedDate) : '');
     setEditDescription(plan.description || '');
   };
 
@@ -154,6 +163,7 @@ export default function IncomesPage() {
         description: editDescription.trim() || null,
       });
       setEditingPlan(null);
+      showToast('Income updated successfully', 'success');
       await loadIncomes(true);
       refreshData();
     } catch (err: any) {
@@ -163,14 +173,32 @@ export default function IncomesPage() {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Delete this income entry? This cannot be undone.')) return;
+  const handleDelete = (id: string) => {
+    setDeleteIncomeError(null);
+    setDeletingIncomeId(id);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deletingIncomeId) return;
+    const id = deletingIncomeId;
+    setIsDeletingIncome(true);
+    setDeleteIncomeError(null);
     try {
       await api.delete(`/incomes/${id}`);
-      await loadIncomes(true);
-      refreshData();
-    } catch (err) {
+      setDeletingIncomeId(null);
+      setIsDeletingIncome(false);
+      setSmashingIncomeId(id);
+      showToast('Income entry deleted', 'delete');
+      setTimeout(() => {
+        setHiddenIncomeIds((prev) => [...prev, id]);
+        setSmashingIncomeId(null);
+        loadIncomes(true);
+        refreshData();
+      }, 380);
+    } catch (err: any) {
       console.error('Failed to delete income:', err);
+      setDeleteIncomeError(err.response?.data?.message || 'Failed to delete income entry.');
+      setIsDeletingIncome(false);
     }
   };
 
@@ -273,19 +301,26 @@ export default function IncomesPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                  {incomesData.items.map((plan: any) => {
+                  {incomesData.items
+                    .filter((plan: any) => !hiddenIncomeIds.includes(plan.id))
+                    .map((plan: any) => {
                     const isReceived = plan.status === 'RECEIVED';
                     const isPartial = plan.status === 'PARTIAL';
                     return (
-                      <tr key={plan.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/50 transition-colors">
+                      <tr
+                        key={plan.id}
+                        className={`hover:bg-slate-50/60 dark:hover:bg-slate-800/50 transition-colors ${
+                          smashingIncomeId === plan.id ? 'animate-item-smash bg-rose-50/70 dark:bg-rose-950/30' : ''
+                        }`}
+                      >
                         <td className="px-6 py-4">
                           <div className="font-bold text-slate-900 dark:text-slate-100">{plan.source}</div>
                           {plan.description && (
                             <div className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">{plan.description}</div>
                           )}
                         </td>
-                        <td className="px-6 py-4 text-xs font-medium text-slate-500 dark:text-slate-400">
-                          {plan.expectedDate ? new Date(plan.expectedDate).toLocaleDateString() : '—'}
+                        <td className="px-6 py-4 text-xs font-medium text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                          {plan.expectedDate ? formatDateTime(plan.expectedDate) : '—'}
                         </td>
                         <td className="px-6 py-4 font-bold text-slate-800 dark:text-slate-200">{formatMMK(plan.expectedAmount)}</td>
                         <td className="px-6 py-4 font-bold text-emerald-600 dark:text-emerald-400">{formatMMK(plan.actualAmount)}</td>
@@ -353,11 +388,18 @@ export default function IncomesPage() {
 
             {/* Mobile Card List View */}
             <div className="md:hidden divide-y divide-slate-100 dark:divide-slate-800">
-              {incomesData.items.map((plan: any) => {
+              {incomesData.items
+                .filter((plan: any) => !hiddenIncomeIds.includes(plan.id))
+                .map((plan: any) => {
                 const isReceived = plan.status === 'RECEIVED';
                 const isPartial = plan.status === 'PARTIAL';
                 return (
-                  <div key={plan.id} className="p-4 space-y-3">
+                  <div
+                    key={plan.id}
+                    className={`p-4 space-y-3 ${
+                      smashingIncomeId === plan.id ? 'animate-item-smash bg-rose-50/70 dark:bg-rose-950/30' : ''
+                    }`}
+                  >
                     <div className="flex items-start justify-between gap-2">
                       <div>
                         <div className="font-bold text-slate-900 dark:text-slate-100 text-sm">{plan.source}</div>
@@ -365,7 +407,7 @@ export default function IncomesPage() {
                           <div className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">{plan.description}</div>
                         )}
                         <div className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">
-                          Date: {plan.expectedDate ? new Date(plan.expectedDate).toLocaleDateString() : '—'}
+                          Date: {plan.expectedDate ? formatDateTime(plan.expectedDate) : '—'}
                         </div>
                       </div>
                       <div>
@@ -495,18 +537,26 @@ export default function IncomesPage() {
               </div>
               <div>
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">Expected Amount (MMK)</label>
-                <input
-                  type="number"
-                  value={editExpectedAmount}
-                  onChange={(e) => setEditExpectedAmount(e.target.value)}
-                  required min={1}
-                  className="w-full text-xl font-bold px-4 py-2.5 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none text-slate-900 dark:text-slate-100"
-                />
+                <div className="relative">
+                  <input
+                    type="number"
+                    value={editExpectedAmount}
+                    onChange={(e) => setEditExpectedAmount(e.target.value)}
+                    required min={1}
+                    className="w-full text-xl font-bold px-4 py-2.5 pr-14 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none text-slate-900 dark:text-slate-100"
+                  />
+                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 dark:text-slate-500">Kyat</span>
+                </div>
+                {editExpectedAmount && Number(editExpectedAmount) > 0 && (
+                  <p className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 mt-1 pl-1">
+                    {formatMMK(Number(editExpectedAmount))}
+                  </p>
+                )}
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">Expected Date</label>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">Date &amp; Time</label>
                 <input
-                  type="date"
+                  type="datetime-local"
                   value={editExpectedDate}
                   onChange={(e) => setEditExpectedDate(e.target.value)}
                   className="w-full text-sm font-medium px-3 py-2.5 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none text-slate-900 dark:text-slate-100"
@@ -586,9 +636,9 @@ export default function IncomesPage() {
                 )}
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">Date Received</label>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">Date &amp; Time Received</label>
                 <input
-                  type="date"
+                  type="datetime-local"
                   value={receiveDate}
                   onChange={(e) => setReceiveDate(e.target.value)}
                   className="w-full text-sm font-medium px-3 py-2.5 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none text-slate-900 dark:text-slate-100"
@@ -608,6 +658,21 @@ export default function IncomesPage() {
         </div>,
         document.body
       )}
+
+      <ConfirmDeleteModal
+        isOpen={!!deletingIncomeId}
+        title="Delete Income Entry"
+        description="Are you sure you want to delete this income entry?"
+        warningTitle="Cannot Be Undone"
+        warningText="This income record will be permanently removed."
+        confirmLabel="Delete Income"
+        isDeleting={isDeletingIncome}
+        error={deleteIncomeError}
+        onClose={() => {
+          if (!isDeletingIncome) setDeletingIncomeId(null);
+        }}
+        onConfirm={handleConfirmDelete}
+      />
     </div>
   );
 }

@@ -4,8 +4,9 @@ import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Receipt, AlertCircle, CheckCircle } from 'lucide-react';
 import { useFinance } from '../context/FinancialContext';
+import { useToast } from '../context/ToastContext';
 import api from '../lib/api';
-import { formatMMK } from '../lib/utils';
+import { formatMMK, toLocalDateTimeInput } from '../lib/utils';
 
 interface AddExpenseModalProps {
   isOpen: boolean;
@@ -19,10 +20,11 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
   onSuccess,
 }) => {
   const { accounts, categories, refreshData } = useFinance();
+  const { showToast } = useToast();
   const [accountId, setAccountId] = useState('');
   const [categoryId, setCategoryId] = useState('');
   const [amount, setAmount] = useState('');
-  const [date, setDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState(() => toLocalDateTimeInput());
   const [description, setDescription] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -64,6 +66,7 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
       onClose();
       setAmount('');
       setDescription('');
+      showToast('Expense saved successfully', 'success');
       if (onSuccess) onSuccess();
       refreshData();
     } catch (err: any) {
@@ -169,10 +172,10 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
           {/* Date */}
           <div>
             <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
-              Date
+              Date &amp; Time
             </label>
             <input
-              type="date"
+              type="datetime-local"
               value={date}
               onChange={(e) => setDate(e.target.value)}
               className="w-full text-sm font-medium px-3 py-2.5 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-rose-500 focus:outline-none text-slate-900 dark:text-slate-100"

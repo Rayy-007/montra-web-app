@@ -4,8 +4,9 @@ import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Edit2, AlertCircle, Check } from 'lucide-react';
 import { useFinance } from '../context/FinancialContext';
+import { useToast } from '../context/ToastContext';
 import api from '../lib/api';
-import { formatMMK } from '../lib/utils';
+import { formatMMK, toLocalDateTimeInput } from '../lib/utils';
 
 interface EditExpenseModalProps {
   transaction: any | null;
@@ -21,6 +22,7 @@ export const EditExpenseModal: React.FC<EditExpenseModalProps> = ({
   onSuccess,
 }) => {
   const { accounts, categories, refreshData } = useFinance();
+  const { showToast } = useToast();
   const [accountId, setAccountId] = useState('');
   const [categoryId, setCategoryId] = useState('');
   const [amount, setAmount] = useState('');
@@ -36,11 +38,7 @@ export const EditExpenseModal: React.FC<EditExpenseModalProps> = ({
       setAccountId(transaction.accountId || (accounts[0]?.id ?? ''));
       setCategoryId(transaction.categoryId || '');
       setAmount(String(transaction.amount || ''));
-      setDate(
-        transaction.date
-          ? new Date(transaction.date).toISOString().split('T')[0]
-          : new Date().toISOString().split('T')[0]
-      );
+      setDate(toLocalDateTimeInput(transaction.date));
       setDescription(transaction.description || '');
       setError(null);
     }
@@ -73,6 +71,7 @@ export const EditExpenseModal: React.FC<EditExpenseModalProps> = ({
       });
 
       onClose();
+      showToast('Expense updated successfully', 'success');
       if (onSuccess) onSuccess();
       refreshData();
     } catch (err: any) {
@@ -186,10 +185,10 @@ export const EditExpenseModal: React.FC<EditExpenseModalProps> = ({
           {/* Date Picker */}
           <div>
             <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
-              Expense Date <span className="text-rose-500">*</span>
+              Expense Date &amp; Time <span className="text-rose-500">*</span>
             </label>
             <input
-              type="date"
+              type="datetime-local"
               value={date}
               onChange={(e) => setDate(e.target.value)}
               required

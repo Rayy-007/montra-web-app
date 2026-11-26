@@ -8,14 +8,22 @@ export interface Account {
   id: string;
   name: string;
   type: 'CASH' | 'MOBILE_WALLET' | 'BANK' | 'SAVINGS';
+  role?: 'DAILY_SPENDING' | 'RESERVE' | 'SAVINGS_HOLDING';
+  color?: string | null;
+  icon?: string | null;
   balance: number;
   startingBalance?: number;
+  isCarriedOver?: boolean;
+  earmarkedSavings?: number;
+  availableBalance?: number;
   budgetLimit?: number | null;
 }
 
 export interface MonthlyAccount extends Account {
   monthlyIncome: number;
   monthlyExpense: number;
+  monthlyTransfersIn?: number;
+  monthlyTransfersOut?: number;
   monthlyNet: number;
 }
 
@@ -46,6 +54,24 @@ export interface InsightsData {
     color: string;
     amount: number;
   }[];
+  coachMetrics?: {
+    dailySpendingBalance: number;
+    reserveBalance: number;
+    totalEarmarkedSavings: number;
+    totalReserveDraws: number;
+    reserveDrawItems: Array<{
+      id: string;
+      amount: number;
+      date: string;
+      description: string | null;
+      transferTag: string | null;
+      fromAccountName: string;
+      toAccountName: string;
+    }>;
+    totalBudgetPlanned: number;
+    budgetOverrun: number;
+    totalSavedThisMonth: number;
+  };
 }
 
 interface FinancialContextType {

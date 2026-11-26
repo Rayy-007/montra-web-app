@@ -23,11 +23,15 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useFinance } from '../../context/FinancialContext';
-import { formatMMK, MONTHS } from '../../lib/utils';
+import { formatMMK, MONTHS, formatDateTime } from '../../lib/utils';
 import { AddExpenseModal } from '../../components/AddExpenseModal';
 import { EditExpenseModal } from '../../components/EditExpenseModal';
+import { ConfirmDeleteModal } from '../../components/ConfirmDeleteModal';
+import { CategoryBadge } from '../../components/CategoryIcon';
+import { WalletBadge } from '../../components/WalletBadge';
 import { ProgressLoading } from '../../components/ProgressLoading';
 import { InfoTooltip } from '../../components/InfoTooltip';
+import { useToast } from '../../context/ToastContext';
 import api from '../../lib/api';
 
 export default function ExpensesPage() {
@@ -50,6 +54,11 @@ export default function ExpensesPage() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingTx, setEditingTx] = useState<any | null>(null);
+  const [deletingTxId, setDeletingTxId] = useState<string | null>(null);
+  const [isDeletingTx, setIsDeletingTx] = useState(false);
+  const [deleteTxError, setDeleteTxError] = useState<string | null>(null);
+  const [smashingTxId, setSmashingTxId] = useState<string | null>(null);
+  const { showToast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedWallet, setSelectedWallet] = useState<string>('ALL');
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
@@ -100,23 +109,37 @@ export default function ExpensesPage() {
     }
   }, [user, month, year]);
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this expense? This will refund the wallet balance.')) return;
+  const handleDelete = (id: string) => {
+    setDeleteTxError(null);
+    setDeletingTxId(id);
+  };
 
-    // Optimistic UI update
-    const previous = [...transactions];
-    const updated = transactions.filter(tx => tx.id !== id);
-    setTransactions(updated);
-    setCachedExpenses(updated, month, year);
+  const handleConfirmDelete = async () => {
+    if (!deletingTxId) return;
+    const id = deletingTxId;
+    setIsDeletingTx(true);
+    setDeleteTxError(null);
 
     try {
       await api.delete(`/transactions/${id}`);
-      refreshData();
-    } catch (err) {
+      setDeletingTxId(null);
+      setIsDeletingTx(false);
+      setSmashingTxId(id);
+      showToast('Expense deleted & refunded to wallet', 'delete');
+
+      setTimeout(() => {
+        setTransactions((prev) => {
+          const updated = prev.filter((tx) => tx.id !== id);
+          setCachedExpenses(updated, month, year);
+          return updated;
+        });
+        setSmashingTxId(null);
+        refreshData();
+      }, 380);
+    } catch (err: any) {
       console.error('Failed to delete transaction:', err);
-      setTransactions(previous);
-      setCachedExpenses(previous, month, year);
-      alert('Failed to delete transaction. Restored.');
+      setDeleteTxError(err.response?.data?.message || 'Failed to delete expense.');
+      setIsDeletingTx(false);
     }
   };
 
@@ -498,20 +521,29 @@ export default function ExpensesPage() {
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                   {sortedTransactions.map((tx) => (
-                    <tr key={tx.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/50 transition-colors">
-                      <td className="px-6 py-4 text-xs font-medium text-slate-600 dark:text-slate-400">
-                        {new Date(tx.date).toLocaleDateString()}
+                    <tr
+                      key={tx.id}
+                      className={`hover:bg-slate-50/60 dark:hover:bg-slate-800/50 transition-colors ${
+                        smashingTxId === tx.id ? 'animate-item-smash bg-rose-50/70 dark:bg-rose-950/30' : ''
+                      }`}
+                    >
+                      <td className="px-6 py-4 text-xs font-medium text-slate-600 dark:text-slate-400 whitespace-nowrap">
+                        {formatDateTime(tx.date)}
                       </td>
                       <td className="px-6 py-4">
-                        <span className="inline-flex items-center text-xs font-semibold px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200">
-                          {tx.category?.name || 'General Expense'}
-                        </span>
+                        <CategoryBadge
+                          name={tx.category?.name || 'General Expense'}
+                          icon={tx.category?.icon}
+                          color={tx.category?.color}
+                        />
                       </td>
                       <td className="px-6 py-4">
-                        <span className="inline-flex items-center space-x-1.5 text-xs font-bold text-slate-700 dark:text-slate-300">
-                          <Wallet className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
-                          <span>{tx.account?.name}</span>
-                        </span>
+                        <WalletBadge
+                          name={tx.account?.name}
+                          type={tx.account?.type}
+                          color={tx.account?.color}
+                          icon={tx.account?.icon}
+                        />
                       </td>
                       <td className="px-6 py-4 text-xs text-slate-500 dark:text-slate-400 max-w-xs truncate">
                         {tx.description || '-'}
@@ -549,22 +581,33 @@ export default function ExpensesPage() {
             {/* Mobile Card List View */}
             <div className="md:hidden divide-y divide-slate-100 dark:divide-slate-800">
               {sortedTransactions.map((tx) => (
-                <div key={tx.id} className="p-4 flex items-center justify-between gap-3">
+                <div
+                  key={tx.id}
+                  className={`p-4 flex items-center justify-between gap-3 ${
+                    smashingTxId === tx.id ? 'animate-item-smash bg-rose-50/70 dark:bg-rose-950/30' : ''
+                  }`}
+                >
                   <div className="space-y-1 min-w-0">
                     <div className="flex items-center space-x-2 flex-wrap gap-y-1">
-                      <span className="inline-flex items-center text-xs font-semibold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200">
-                        {tx.category?.name || 'General Expense'}
-                      </span>
-                      <span className="inline-flex items-center space-x-1 text-[11px] font-medium text-slate-500 dark:text-slate-400">
-                        <Wallet className="w-3 h-3 text-slate-400" />
-                        <span>{tx.account?.name}</span>
-                      </span>
+                      <CategoryBadge
+                        name={tx.category?.name || 'General Expense'}
+                        icon={tx.category?.icon}
+                        color={tx.category?.color}
+                        size="xs"
+                      />
+                      <WalletBadge
+                        name={tx.account?.name}
+                        type={tx.account?.type}
+                        color={tx.account?.color}
+                        icon={tx.account?.icon}
+                        size="xs"
+                      />
                     </div>
                     {tx.description && (
                       <p className="text-xs text-slate-600 dark:text-slate-300 truncate">{tx.description}</p>
                     )}
                     <p className="text-[11px] text-slate-400 dark:text-slate-500">
-                      {new Date(tx.date).toLocaleDateString()}
+                      {formatDateTime(tx.date)}
                     </p>
                   </div>
 
@@ -626,6 +669,22 @@ export default function ExpensesPage() {
         onSuccess={() => {
           loadTransactions(true);
         }}
+      />
+
+      {/* Delete Expense Confirmation Modal */}
+      <ConfirmDeleteModal
+        isOpen={!!deletingTxId}
+        title="Delete Expense"
+        description="Are you sure you want to delete this expense?"
+        warningTitle="Wallet Refund"
+        warningText="The expense amount will be added back to your wallet balance."
+        confirmLabel="Delete Expense"
+        isDeleting={isDeletingTx}
+        error={deleteTxError}
+        onClose={() => {
+          if (!isDeletingTx) setDeletingTxId(null);
+        }}
+        onConfirm={handleConfirmDelete}
       />
     </div>
   );

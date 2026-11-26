@@ -1,6 +1,7 @@
 import { Router, Response } from 'express';
 import prisma from '../../prisma';
 import { authenticateJwt, AuthRequest } from '../../middleware/auth';
+import { computeMonthlyAccountsAndCoachMetrics } from '../../lib/monthlyBalances';
 
 const router = Router();
 router.use(authenticateJwt);
@@ -14,36 +15,31 @@ const getMonthlyInsights = async (req: AuthRequest, res: Response) => {
     const startDate = new Date(year, month - 1, 1);
     const endDate = new Date(year, month, 0, 23, 59, 59, 999);
 
-    // Parallelize all DB reads in a single roundtrip
-    const [transactionTotals, accountTransactionTotals, incomePlans, budget, accounts, categoryExpenses, allCategories, monthlyBalances] = await Promise.all([
+    const [
+      transactionTotals,
+      incomePlans,
+      budget,
+      categoryExpenses,
+      allCategories,
+      monthlyComputation,
+    ] = await Promise.all([
       prisma.transaction.groupBy({
         by: ['type'],
         where: {
           userId,
-          date: { gte: startDate, lte: endDate }
+          date: { gte: startDate, lte: endDate },
+          type: { in: ['INCOME', 'EXPENSE'] }, // Strictly exclude TRANSFER from Income/Expense totals
         },
-        _sum: { amount: true }
-      }),
-      prisma.transaction.groupBy({
-        by: ['accountId', 'type'],
-        where: {
-          userId,
-          date: { gte: startDate, lte: endDate }
-        },
-        _sum: { amount: true }
+        _sum: { amount: true },
       }),
       prisma.incomePlan.findMany({
-        where: { userId, month, year }
+        where: { userId, month, year },
       }),
       prisma.budget.findUnique({
         where: {
-          userId_month_year: { userId, month, year }
+          userId_month_year: { userId, month, year },
         },
-        include: { items: true }
-      }),
-      prisma.account.findMany({
-        where: { userId },
-        orderBy: { createdAt: 'asc' }
+        include: { items: true },
       }),
       prisma.transaction.groupBy({
         by: ['categoryId'],
@@ -51,18 +47,14 @@ const getMonthlyInsights = async (req: AuthRequest, res: Response) => {
           userId,
           type: 'EXPENSE',
           date: { gte: startDate, lte: endDate },
-          categoryId: { not: null }
+          categoryId: { not: null },
         },
-        _sum: { amount: true }
+        _sum: { amount: true },
       }),
       prisma.category.findMany({
-        where: { userId }
+        where: { userId },
       }),
-      prisma.$queryRawUnsafe<any[]>(`
-        SELECT "accountId", "balance"
-        FROM "AccountMonthlyBalance"
-        WHERE "userId" = $1 AND "month" = $2 AND "year" = $3
-      `, userId, month, year).catch(() => [])
+      computeMonthlyAccountsAndCoachMetrics(userId, month, year),
     ]);
 
     let actualIncome = 0;
@@ -74,53 +66,38 @@ const getMonthlyInsights = async (req: AuthRequest, res: Response) => {
       if (group.type === 'EXPENSE') actualExpense = amount;
     });
 
-    const accountIncomeMap = new Map<string, number>();
-    const accountExpenseMap = new Map<string, number>();
-    accountTransactionTotals.forEach((group) => {
-      const amount = Number(group._sum.amount || 0);
-      if (group.type === 'INCOME') accountIncomeMap.set(group.accountId, (accountIncomeMap.get(group.accountId) || 0) + amount);
-      if (group.type === 'EXPENSE') accountExpenseMap.set(group.accountId, (accountExpenseMap.get(group.accountId) || 0) + amount);
-    });
-
     const actualNet = actualIncome - actualExpense;
     const expectedIncome = incomePlans.reduce((sum, p) => sum + Number(p.expectedAmount), 0);
     const plannedExpense = budget ? budget.items.reduce((sum, item) => sum + Number(item.plannedAmount), 0) : 0;
     const expectedNet = expectedIncome - plannedExpense;
 
-    const monthlyBalanceMap = new Map<string, number>();
-    monthlyBalances.forEach((row) => {
-      monthlyBalanceMap.set(row.accountId, Number(row.balance || 0));
-    });
-
-    const monthAccounts = accounts.map((acc) => {
-      const startingBalance = monthlyBalanceMap.has(acc.id) ? (monthlyBalanceMap.get(acc.id) || 0) : 0;
-      const accIncome = accountIncomeMap.get(acc.id) || 0;
-      const accExpense = accountExpenseMap.get(acc.id) || 0;
-      const balance = startingBalance + accIncome - accExpense;
-      return {
-        id: acc.id,
-        name: acc.name,
-        type: acc.type,
-        startingBalance,
-        balance,
-        budgetLimit: acc.budgetLimit ? Number(acc.budgetLimit) : null
-      };
-    });
-
+    const monthAccounts = monthlyComputation.accounts;
     const totalWalletBalance = monthAccounts.reduce((sum, acc) => sum + Number(acc.balance), 0);
 
-    // 5. Category Breakdown for Charts
+    // Coach Metrics: Separate Daily Spending vs. Reserve vs. Savings & track Reserve Draws
+    const dailySpendingBalance = monthAccounts
+      .filter((a) => a.role === 'DAILY_SPENDING')
+      .reduce((sum, a) => sum + a.availableBalance, 0);
+    const reserveBalance = monthAccounts
+      .filter((a) => a.role === 'RESERVE')
+      .reduce((sum, a) => sum + a.availableBalance, 0);
+    const totalEarmarkedSavings = monthAccounts.reduce((sum, a) => sum + a.earmarkedSavings, 0);
+    const budgetOverrun = plannedExpense > 0 ? Math.max(0, actualExpense - plannedExpense) : 0;
+
+    // Category Breakdown for Charts
     const categoryMap = new Map(allCategories.map((c) => [c.id, c]));
 
-    const chartData = categoryExpenses.map((ce) => {
-      const cat = categoryMap.get(ce.categoryId!);
-      return {
-        categoryId: ce.categoryId,
-        categoryName: cat?.name || 'Uncategorized',
-        color: cat?.color || '#94A3B8',
-        amount: Number(ce._sum.amount || 0)
-      };
-    }).sort((a, b) => b.amount - a.amount);
+    const chartData = categoryExpenses
+      .map((ce) => {
+        const cat = categoryMap.get(ce.categoryId!);
+        return {
+          categoryId: ce.categoryId,
+          categoryName: cat?.name || 'Uncategorized',
+          color: cat?.color || '#94A3B8',
+          amount: Number(ce._sum.amount || 0),
+        };
+      })
+      .sort((a, b) => b.amount - a.amount);
 
     res.json({
       month,
@@ -128,16 +105,26 @@ const getMonthlyInsights = async (req: AuthRequest, res: Response) => {
       actualInsight: {
         totalIncome: actualIncome,
         totalExpense: actualExpense,
-        net: actualNet
+        net: actualNet,
       },
       expectedInsight: {
         totalIncome: expectedIncome,
         totalExpense: plannedExpense,
-        net: expectedNet
+        net: expectedNet,
       },
       totalWalletBalance,
       accounts: monthAccounts,
-      categoryBreakdown: chartData
+      categoryBreakdown: chartData,
+      coachMetrics: {
+        dailySpendingBalance,
+        reserveBalance,
+        totalEarmarkedSavings,
+        totalReserveDraws: monthlyComputation.totalReserveDraws,
+        reserveDrawItems: monthlyComputation.reserveDrawItems,
+        totalBudgetPlanned: plannedExpense,
+        budgetOverrun,
+        totalSavedThisMonth: monthlyComputation.totalSavedThisMonth,
+      },
     });
   } catch (error: any) {
     res.status(500).json({ message: 'Failed to generate insights', error: error.message });

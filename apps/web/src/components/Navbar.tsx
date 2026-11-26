@@ -9,6 +9,7 @@ import {
   Receipt,
   PieChart,
   Wallet,
+  PiggyBank,
   LogOut,
   ChevronDown,
   ChevronLeft,
@@ -22,6 +23,7 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { useFinance } from '../context/FinancialContext';
 import { useTheme } from '../context/ThemeContext';
+import { useToast } from '../context/ToastContext';
 import { MONTHS } from '../lib/utils';
 import { Logo } from './Logo';
 import { MonthlySummaryModal } from './MonthlySummaryModal';
@@ -31,6 +33,7 @@ export const Navbar: React.FC = () => {
   const { user, logout } = useAuth();
   const { month, year, setMonth, setYear } = useFinance();
   const { resolvedTheme, toggleTheme } = useTheme();
+  const { showToast } = useToast();
 
   const [isPickerOpen, setIsPickerOpen] = useState(false);
   const [pickerYear, setPickerYear] = useState<number>(year);
@@ -59,28 +62,34 @@ export const Navbar: React.FC = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isPickerOpen]);
 
+  const notifyMonthChange = (m: number, y: number) => {
+    const label = MONTHS.find((item) => item.value === m)?.label || `Month ${m}`;
+    showToast(`Switched to ${label} ${y}`, 'info');
+  };
+
   const handlePrevMonth = () => {
-    if (month === 1) {
-      setMonth(12);
-      setYear(year - 1);
-    } else {
-      setMonth(month - 1);
-    }
+    const nextM = month === 1 ? 12 : month - 1;
+    const nextY = month === 1 ? year - 1 : year;
+    setMonth(nextM);
+    setYear(nextY);
+    notifyMonthChange(nextM, nextY);
   };
 
   const handleNextMonth = () => {
-    if (month === 12) {
-      setMonth(1);
-      setYear(year + 1);
-    } else {
-      setMonth(month + 1);
-    }
+    const nextM = month === 12 ? 1 : month + 1;
+    const nextY = month === 12 ? year + 1 : year;
+    setMonth(nextM);
+    setYear(nextY);
+    notifyMonthChange(nextM, nextY);
   };
 
   const handleSelectMonth = (selectedM: number) => {
     setMonth(selectedM);
     setYear(pickerYear);
     setIsPickerOpen(false);
+    if (selectedM !== month || pickerYear !== year) {
+      notifyMonthChange(selectedM, pickerYear);
+    }
   };
 
   const handleGoToCurrentMonth = () => {
@@ -88,6 +97,9 @@ export const Navbar: React.FC = () => {
     setYear(realCurrentYear);
     setPickerYear(realCurrentYear);
     setIsPickerOpen(false);
+    if (realCurrentMonth !== month || realCurrentYear !== year) {
+      notifyMonthChange(realCurrentMonth, realCurrentYear);
+    }
   };
 
   const navItems = [
@@ -95,6 +107,7 @@ export const Navbar: React.FC = () => {
     { label: 'Incomes', href: '/incomes', icon: TrendingUp },
     { label: 'Expenses', href: '/expenses', icon: Receipt },
     { label: 'Budgets', href: '/budgets', icon: PieChart },
+    { label: 'Savings', href: '/savings', icon: PiggyBank },
     { label: 'Wallets', href: '/wallets', icon: Wallet },
   ];
 
@@ -302,7 +315,7 @@ export const Navbar: React.FC = () => {
         aria-label="Mobile Navigation"
         className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-t border-slate-200/90 dark:border-slate-800 shadow-[0_-4px_24px_rgba(0,0,0,0.06)] dark:shadow-[0_-4px_24px_rgba(0,0,0,0.5)] px-2 py-1.5 pb-[max(0.375rem,env(safe-area-inset-bottom))] transition-colors"
       >
-        <div className="grid grid-cols-5 gap-1 max-w-md mx-auto items-center">
+        <div className="grid grid-cols-6 gap-1 max-w-md mx-auto items-center">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = pathname === item.href;

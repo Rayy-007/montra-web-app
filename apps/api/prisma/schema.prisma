@@ -15,6 +15,12 @@ enum AccountType {
   SAVINGS
 }
 
+enum WalletRole {
+  DAILY_SPENDING
+  RESERVE
+  SAVINGS_HOLDING
+}
+
 enum CategoryType {
   EXPENSE
   INCOME
@@ -33,31 +39,38 @@ enum IncomeStatus {
 }
 
 model User {
-  id           String        @id @default(uuid())
-  email        String        @unique
-  name         String
-  passwordHash String
-  currency     String        @default("MMK")
-  accounts     Account[]
-  categories   Category[]
-  transactions Transaction[]
-  budgets      Budget[]
-  incomePlans  IncomePlan[]
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
+  id                 String              @id @default(uuid())
+  email              String              @unique
+  name               String
+  passwordHash       String
+  currency           String              @default("MMK")
+  accounts           Account[]
+  categories         Category[]
+  transactions       Transaction[]
+  budgets            Budget[]
+  incomePlans        IncomePlan[]
+  savingsGoals       SavingsGoal[]
+  savingsAllocations SavingsAllocation[]
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
 }
 
 model Account {
-  id           String        @id @default(uuid())
-  userId       String
-  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  name         String        // "Cash", "Kpay", "AYA Bank"
-  type         AccountType   @default(CASH)
-  balance      Decimal       @default(0)
-  budgetLimit  Decimal?      // Optional monthly spending cap
-  transactions Transaction[]
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
+  id                 String              @id @default(uuid())
+  userId             String
+  user               User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name               String              // "Cash", "Kpay", "KBZ Bank", "AYA Bank"
+  type               AccountType         @default(CASH)
+  role               WalletRole          @default(DAILY_SPENDING)
+  color              String?
+  icon               String?
+  balance            Decimal             @default(0)
+  budgetLimit        Decimal?            // Optional monthly spending cap
+  transactions       Transaction[]       @relation("TransactionAccount")
+  transfersIn        Transaction[]       @relation("TransferDestination")
+  savingsAllocations SavingsAllocation[]
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
 }
 
 model Category {
@@ -79,16 +92,46 @@ model Transaction {
   userId       String
   user         User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   accountId    String
-  account      Account         @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  account      Account         @relation("TransactionAccount", fields: [accountId], references: [id], onDelete: Cascade)
+  toAccountId  String?
+  toAccount    Account?        @relation("TransferDestination", fields: [toAccountId], references: [id], onDelete: SetNull)
   categoryId   String?
   category     Category?       @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   type         TransactionType @default(EXPENSE)
+  transferTag  String?         // e.g. "CASH_WITHDRAWAL", "FAMILY_EXCHANGE", "TOP_UP", "RESERVE_DRAW", "SAVINGS_CONTRIBUTION"
   amount       Decimal
   date         DateTime        @default(now())
   description  String?
   incomePlanId String?         // Linked if derived from an expected income plan
   createdAt    DateTime        @default(now())
   updatedAt    DateTime        @updatedAt
+}
+
+model SavingsGoal {
+  id           String              @id @default(uuid())
+  userId       String
+  user         User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name         String              // e.g. "Laptop Fund", "General Savings"
+  targetAmount Decimal?
+  icon         String?             @default("PiggyBank")
+  color        String?             @default("#10B981")
+  allocations  SavingsAllocation[]
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+}
+
+model SavingsAllocation {
+  id        String      @id @default(uuid())
+  userId    String
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  goalId    String
+  goal      SavingsGoal @relation(fields: [goalId], references: [id], onDelete: Cascade)
+  accountId String
+  account   Account     @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  amount    Decimal     // Positive for deposit/earmark, negative for withdrawal
+  note      String?
+  date      DateTime    @default(now())
+  createdAt DateTime    @default(now())
 }
 
 model Budget {
