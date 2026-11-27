@@ -28,7 +28,7 @@ export default function RegisterPage() {
     setLoading(true);
     try {
       await register(name.trim(), email.trim(), password, 'MMK');
-      router.push('/dashboard');
+      router.push('/');
     } catch (err: any) {
       setError(err.response?.data?.message || 'Registration failed. Please try a different email.');
     } finally {
