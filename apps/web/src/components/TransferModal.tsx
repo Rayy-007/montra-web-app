@@ -309,7 +309,7 @@ export const TransferModal: React.FC<TransferModalProps> = ({
                   <div className="p-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 rounded-xl text-xs text-amber-800 dark:text-amber-300 flex items-start space-x-2">
                     <ShieldAlert className="w-4 h-4 flex-shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
                     <span>
-                      <strong>Bank Top-Up Notice:</strong> Moving money from Main Bank ({fromAccount?.name}) to Daily Use ({toAccount?.name}). Dashboard and Budgets will show this extra money taken from bank so you stay on track.
+                      <strong>Bank Top-Up Notice:</strong> Moving money from Main Bank ({fromAccount?.name}) to Daily Use ({toAccount?.name}). Home and Budgets will show this extra money taken from bank so you stay on track.
                     </span>
                   </div>
                 )}

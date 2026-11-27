@@ -4,12 +4,14 @@ import React, { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
-  LayoutDashboard,
+  Home,
   TrendingUp,
   Receipt,
   PieChart,
   Wallet,
   PiggyBank,
+  BarChart3,
+  MoreHorizontal,
   LogOut,
   ChevronDown,
   ChevronLeft,
@@ -18,7 +20,8 @@ import {
   RotateCcw,
   Sun,
   Moon,
-  Download
+  Download,
+  X
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useFinance } from '../context/FinancialContext';
@@ -36,9 +39,11 @@ export const Navbar: React.FC = () => {
   const { showToast } = useToast();
 
   const [isPickerOpen, setIsPickerOpen] = useState(false);
+  const [isMoreOpen, setIsMoreOpen] = useState(false);
   const [pickerYear, setPickerYear] = useState<number>(year);
   const [isSummaryModalOpen, setIsSummaryModalOpen] = useState(false);
   const pickerRef = useRef<HTMLDivElement>(null);
+  const moreRef = useRef<HTMLDivElement>(null);
 
   const realDate = new Date();
   const realCurrentMonth = realDate.getMonth() + 1;
@@ -49,18 +54,26 @@ export const Navbar: React.FC = () => {
     setPickerYear(year);
   }, [year]);
 
-  // Close popover on outside click
+  // Close popovers on outside click
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (pickerRef.current && !pickerRef.current.contains(e.target as Node)) {
         setIsPickerOpen(false);
       }
+      if (moreRef.current && !moreRef.current.contains(e.target as Node)) {
+        setIsMoreOpen(false);
+      }
     };
-    if (isPickerOpen) {
+    if (isPickerOpen || isMoreOpen) {
       document.addEventListener('mousedown', handleClickOutside);
     }
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [isPickerOpen]);
+  }, [isPickerOpen, isMoreOpen]);
+
+  // Close mobile More drawer whenever route changes
+  useEffect(() => {
+    setIsMoreOpen(false);
+  }, [pathname]);
 
   const notifyMonthChange = (m: number, y: number) => {
     const label = MONTHS.find((item) => item.value === m)?.label || `Month ${m}`;
@@ -103,12 +116,26 @@ export const Navbar: React.FC = () => {
   };
 
   const navItems = [
-    { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+    { label: 'Home', href: '/', icon: Home },
     { label: 'Incomes', href: '/incomes', icon: TrendingUp },
     { label: 'Expenses', href: '/expenses', icon: Receipt },
     { label: 'Budgets', href: '/budgets', icon: PieChart },
     { label: 'Savings', href: '/savings', icon: PiggyBank },
     { label: 'Wallets', href: '/wallets', icon: Wallet },
+    { label: 'Stats', href: '/stats', icon: BarChart3 },
+  ];
+
+  const mobilePrimaryItems = [
+    { label: 'Home', href: '/', icon: Home },
+    { label: 'Incomes', href: '/incomes', icon: TrendingUp },
+    { label: 'Expenses', href: '/expenses', icon: Receipt },
+    { label: 'Budgets', href: '/budgets', icon: PieChart },
+    { label: 'Stats', href: '/stats', icon: BarChart3 },
+  ];
+
+  const mobileMoreItems = [
+    { label: 'Savings', href: '/savings', icon: PiggyBank, desc: 'Goals & targets' },
+    { label: 'Wallets', href: '/wallets', icon: Wallet, desc: 'Accounts & transfers' },
   ];
 
   if (pathname === '/login' || pathname === '/register') {
@@ -117,6 +144,7 @@ export const Navbar: React.FC = () => {
 
   const currentMonthLabel = MONTHS.find((m) => m.value === month)?.label || 'Month';
   const yearOptions = Array.from({ length: 36 }, (_, i) => 2020 + i);
+  const isMoreActive = mobileMoreItems.some((item) => item.href === pathname);
 
   return (
     <>
@@ -125,10 +153,10 @@ export const Navbar: React.FC = () => {
           <div className="flex items-center justify-between h-14 sm:h-16">
             {/* Logo & Brand */}
             <div className="flex items-center space-x-2 sm:space-x-3">
-              <Logo size={34} withText textClassName="text-lg sm:text-xl" href="/dashboard" />
+              <Logo size={34} withText textClassName="text-lg sm:text-xl" href="/" />
 
               {/* Desktop Navigation links */}
-              <nav className="hidden md:flex items-center space-x-1 pl-6">
+              <nav className="hidden md:flex items-center space-x-0.5 lg:space-x-1 pl-3 lg:pl-6">
                 {navItems.map((item) => {
                   const Icon = item.icon;
                   const isActive = pathname === item.href;
@@ -136,7 +164,7 @@ export const Navbar: React.FC = () => {
                     <Link
                       key={item.href}
                       href={item.href}
-                      className={`flex items-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${isActive
+                      className={`flex items-center space-x-1.5 px-2.5 lg:px-3 py-2 rounded-lg text-xs lg:text-sm font-medium transition-colors ${isActive
                           ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 font-semibold'
                           : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800'
                         }`}
@@ -310,39 +338,110 @@ export const Navbar: React.FC = () => {
         </div>
       </header>
 
-      {/* Modern Mobile Bottom Navigation Bar (Fixed for Thumb-Friendly UX) */}
-      <nav
-        aria-label="Mobile Navigation"
-        className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-t border-slate-200/90 dark:border-slate-800 shadow-[0_-4px_24px_rgba(0,0,0,0.06)] dark:shadow-[0_-4px_24px_rgba(0,0,0,0.5)] px-2 py-1.5 pb-[max(0.375rem,env(safe-area-inset-bottom))] transition-colors"
-      >
-        <div className="grid grid-cols-6 gap-1 max-w-md mx-auto items-center">
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = pathname === item.href;
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`flex flex-col items-center justify-center py-1.5 px-1 rounded-xl transition-all duration-200 ${isActive
-                    ? 'text-emerald-600 dark:text-emerald-400 font-bold bg-emerald-50/80 dark:bg-emerald-950/60'
-                    : 'text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 font-medium'
-                  }`}
+      {/* Modern Mobile Bottom Navigation Bar (Fixed 6-Slot Thumb-Friendly UX with Collapsible More Menu) */}
+      <div ref={moreRef} className="md:hidden">
+        {isMoreOpen && (
+          <div className="fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom))] right-3 z-50 w-56 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl p-2 space-y-1 animate-modal-slide">
+            <div className="flex items-center justify-between px-2.5 py-1">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                More Pages
+              </span>
+              <button
+                type="button"
+                onClick={() => setIsMoreOpen(false)}
+                className="p-0.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded"
+                aria-label="Close more menu"
               >
-                <div className="relative">
-                  <Icon className={`w-5 h-5 transition-transform duration-200 ${isActive ? 'scale-110 text-emerald-600 dark:text-emerald-400' : ''}`} />
-                  {isActive && (
-                    <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-emerald-600 dark:bg-emerald-400" />
-                  )}
-                </div>
-                <span className={`text-[10px] mt-1 tracking-tight truncate max-w-[56px] text-center ${isActive ? 'font-bold text-emerald-700 dark:text-emerald-400' : 'font-medium text-slate-500 dark:text-slate-400'
-                  }`}>
-                  {item.label}
-                </span>
-              </Link>
-            );
-          })}
-        </div>
-      </nav>
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+            {mobileMoreItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = pathname === item.href;
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={() => setIsMoreOpen(false)}
+                  className={`flex items-center space-x-3 px-3 py-2.5 rounded-xl transition-colors ${
+                    isActive
+                      ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400'
+                      : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'
+                  }`}
+                >
+                  <div
+                    className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                      isActive
+                        ? 'bg-emerald-100 dark:bg-emerald-900/60 text-emerald-600 dark:text-emerald-300'
+                        : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'
+                    }`}
+                  >
+                    <Icon className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold leading-tight">{item.label}</div>
+                    <div className="text-[10px] text-slate-400 dark:text-slate-500">{item.desc}</div>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        )}
+
+        <nav
+          aria-label="Mobile Navigation"
+          className="fixed bottom-0 inset-x-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-t border-slate-200/90 dark:border-slate-800 shadow-[0_-4px_24px_rgba(0,0,0,0.06)] dark:shadow-[0_-4px_24px_rgba(0,0,0,0.5)] px-2 py-1.5 pb-[max(0.375rem,env(safe-area-inset-bottom))] transition-colors"
+        >
+          <div className="grid grid-cols-6 gap-1 max-w-md mx-auto items-center">
+            {mobilePrimaryItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = pathname === item.href;
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`flex flex-col items-center justify-center py-1.5 px-1 rounded-xl transition-all duration-200 ${isActive
+                      ? 'text-emerald-600 dark:text-emerald-400 font-bold bg-emerald-50/80 dark:bg-emerald-950/60'
+                      : 'text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 font-medium'
+                    }`}
+                >
+                  <div className="relative">
+                    <Icon className={`w-5 h-5 transition-transform duration-200 ${isActive ? 'scale-110 text-emerald-600 dark:text-emerald-400' : ''}`} />
+                    {isActive && (
+                      <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-emerald-600 dark:bg-emerald-400" />
+                    )}
+                  </div>
+                  <span className={`text-[10px] mt-1 tracking-tight truncate max-w-[56px] text-center ${isActive ? 'font-bold text-emerald-700 dark:text-emerald-400' : 'font-medium text-slate-500 dark:text-slate-400'
+                    }`}>
+                    {item.label}
+                  </span>
+                </Link>
+              );
+            })}
+
+            <button
+              type="button"
+              onClick={() => setIsMoreOpen((prev) => !prev)}
+              aria-expanded={isMoreOpen}
+              className={`flex flex-col items-center justify-center py-1.5 px-1 rounded-xl transition-all duration-200 ${isMoreActive || isMoreOpen
+                  ? 'text-emerald-600 dark:text-emerald-400 font-bold bg-emerald-50/80 dark:bg-emerald-950/60'
+                  : 'text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 font-medium'
+                }`}
+            >
+              <div className="relative">
+                <MoreHorizontal className={`w-5 h-5 transition-transform duration-200 ${isMoreActive || isMoreOpen ? 'scale-110 text-emerald-600 dark:text-emerald-400' : ''}`} />
+                {isMoreActive && (
+                  <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-emerald-600 dark:bg-emerald-400" />
+                )}
+              </div>
+              <span className={`text-[10px] mt-1 tracking-tight truncate max-w-[56px] text-center ${isMoreActive || isMoreOpen ? 'font-bold text-emerald-700 dark:text-emerald-400' : 'font-medium text-slate-500 dark:text-slate-400'
+                }`}>
+                More
+              </span>
+            </button>
+          </div>
+        </nav>
+      </div>
 
       {/* Monthly Summary PDF Modal */}
       <MonthlySummaryModal

@@ -52,6 +52,7 @@ export interface InsightsData {
     categoryId: string;
     categoryName: string;
     color: string;
+    icon?: string | null;
     amount: number;
   }[];
   coachMetrics?: {
